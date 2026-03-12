@@ -1,0 +1,187 @@
+"""FASTA file I/O and DataFrame conversion."""
+
+from __future__ import annotations
+
+import warnings
+from collections import Counter
+from pathlib import Path
+from typing import Literal
+
+import pandas as pd
+from Bio import SeqIO
+
+from flua.constants import INFLUENZA_SEGMENTS
+from flua.models import AnalyzedSequence, SequenceGroup
+from flua.products import generate_alternative_products
+from flua.seq_utils import (
+    detect_sequence_type,
+    extract_subtype,
+    identify_segment,
+    translate_sequence,
+)
+
+# ── Loading ──────────────────────────────────────────────────────────────
+
+
+def load_fasta(
+    filepath: str | Path,
+    segment_names: list[str] | None = None,
+    group_name: str | None = None,
+) -> SequenceGroup:
+    """Read a single FASTA file and return a :class:`SequenceGroup`."""
+    filepath = Path(filepath)
+    if group_name is None:
+        group_name = filepath.stem
+
+    group = SequenceGroup(group_name=group_name, source_file=str(filepath))
+    detected_subtypes: list[str] = []
+
+    for record in SeqIO.parse(str(filepath), "fasta"):
+        seq_str = str(record.seq)
+        seq_type = detect_sequence_type(seq_str)
+        translated = translate_sequence(seq_str, seq_type)
+        segment = identify_segment(record.id, record.description, segment_names)
+
+        subtype = extract_subtype(record.id, record.description)
+        if subtype:
+            detected_subtypes.append(subtype)
+
+        alt_products: list = []
+        if seq_type != "Protein" and segment is not None:
+            alt_products = generate_alternative_products(seq_str, segment)
+
+        analyzed = AnalyzedSequence(
+            record=record,
+            seq_type=seq_type,
+            translated=translated,
+            segment_name=segment,
+            alt_products=alt_products,
+        )
+        group.sequences.append(analyzed)
+
+    # Assign the most frequently detected subtype to the group.
+    if detected_subtypes:
+        group.subtype = Counter(detected_subtypes).most_common(1)[0][0]
+
+    return group
+
+
+def load_multiple_fasta(
+    filepaths: list[str | Path],
+    segment_names: list[str] | None = None,
+) -> list[SequenceGroup]:
+    """Read multiple FASTA files and return a list of
+    :class:`SequenceGroup` objects."""
+    return [load_fasta(fp, segment_names=segment_names) for fp in filepaths]
+
+
+# ── DataFrame conversion ─────────────────────────────────────────────────
+
+
+def groups_to_dataframe(
+    groups: list[SequenceGroup],
+    value_type: Literal["raw", "translated"] = "raw",
+    segment_names: list[str] | None = None,
+    include_alt_products: bool = True,
+) -> pd.DataFrame:
+    """Convert a list of :class:`SequenceGroup` objects into a
+    :class:`~pandas.DataFrame`.
+
+    Parameters
+    ----------
+    groups:
+        Sequence groups to convert.
+    value_type:
+        ``"raw"`` for nucleotide sequences, ``"translated"`` for amino
+        acid sequences.
+    segment_names:
+        Segment names to include as columns.  Defaults to
+        :data:`~flua.constants.INFLUENZA_SEGMENTS`.
+    include_alt_products:
+        If ``True``, add columns for each alternative product.
+    """
+    if segment_names is None:
+        segment_names = INFLUENZA_SEGMENTS
+
+    # Collect alternative product names across all groups.
+    all_product_names: dict[str, set[str]] = {}
+    if include_alt_products:
+        for group in groups:
+            for seq in group.sequences:
+                if seq.segment_name:
+                    if seq.segment_name not in all_product_names:
+                        all_product_names[seq.segment_name] = set()
+                    for p in seq.alt_products:
+                        all_product_names[seq.segment_name].add(p.name)
+
+    rows = []
+    for group in groups:
+        row: dict = {
+            "group_name": group.group_name,
+            "source_file": group.source_file,
+            "subtype": group.subtype,
+            "num_sequences": len(group.sequences),
+        }
+
+        for seg_name in segment_names:
+            seq_obj = group.get_segment(seg_name)
+
+            if seq_obj is None:
+                row[f"{seg_name}_seq"] = None
+                row[f"{seg_name}_length"] = None
+                row[f"{seg_name}_type"] = None
+            else:
+                if value_type == "translated" and seq_obj.translated is not None:
+                    row[f"{seg_name}_seq"] = seq_obj.translated
+                    row[f"{seg_name}_length"] = len(seq_obj.translated)
+                else:
+                    row[f"{seg_name}_seq"] = seq_obj.raw_sequence
+                    row[f"{seg_name}_length"] = seq_obj.length
+                row[f"{seg_name}_type"] = seq_obj.seq_type
+
+            if include_alt_products and seg_name in all_product_names:
+                for prod_name in sorted(all_product_names[seg_name]):
+                    col_key = f"{prod_name}_protein"
+                    col_len_key = f"{prod_name}_length_aa"
+                    if seq_obj is not None:
+                        product = seq_obj.get_product(prod_name)
+                        if product is not None:
+                            row[col_key] = product.protein_seq
+                            row[col_len_key] = product.length_aa
+                        else:
+                            row[col_key] = None
+                            row[col_len_key] = None
+                    else:
+                        row[col_key] = None
+                        row[col_len_key] = None
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    _check_length_consistency(df, segment_names)
+    return df
+
+
+def _check_length_consistency(df: pd.DataFrame, segment_names: list[str]) -> None:
+    """Emit a warning when sequence lengths for the same segment differ
+    across samples."""
+    if len(df) < 2:
+        return
+    for seg_name in segment_names:
+        length_col = f"{seg_name}_length"
+        if length_col not in df.columns:
+            continue
+        lengths = df[length_col].dropna()
+        if len(lengths) < 2:
+            continue
+        if len(lengths.unique()) > 1:
+            info = ", ".join(
+                f"{r['group_name']}={r[length_col]}"
+                for _, r in df.iterrows()
+                if pd.notna(r[length_col])
+            )
+            warnings.warn(
+                f"[{seg_name}] Sequence lengths differ across samples: {info}",
+                UserWarning,
+                stacklevel=3,
+            )

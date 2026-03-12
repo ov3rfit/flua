@@ -11,7 +11,7 @@ version = "0.0.1"
 description = "A library for structured flu sequence analysis"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Sangwook Kim", email = "windaheadjp@gmail.com" },
 ]
@@ -27,11 +27,11 @@ classifiers = [
 ]
 dependencies = [
     "pandas>=2.0",
+    "biopython>=1.85",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "biopython>=1.85",
     "pytest>=8.0",
     "pytest-cov>=5.0",
     "ruff>=0.8",
