@@ -1,0 +1,99 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+# ---- Project Metadata ----
+
+[project]
+name = "flua"
+version = "0.0.1"
+description = "A library for structured flu sequence analysis"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Sangwook Kim", email = "windaheadjp@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "biopython>=1.85",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+    "ipykernel>=6.0",       # Jupyter notebook support
+]
+
+[project.urls]
+Homepage = "https://github.com/ov3rfit/flua"
+Repository = "https://github.com/ov3rfit/flua"
+Issues = "https://github.com/ov3rfit/flua/issues"
+
+
+# ---- Hatch Build Settings ----
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "notebooks/",
+    "tests/",
+    ".github/",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flua"]
+
+
+# ---- Ruff ----
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["flua"]
+
+
+# ---- Pytest ----
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+
+# ---- Coverage ----
+
+[tool.coverage.run]
+source = ["flua"]
+omit = ["tests/*", "notebooks/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
