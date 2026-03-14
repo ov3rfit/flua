@@ -23,6 +23,17 @@ class AlternativeProduct:
     nucleotide_seq: str
     aa_seq: str
 
+    @property
+    def has_stop_codon(self) -> bool:
+        """``True`` if the translated sequence contains a stop codon (``*``)."""
+        return "*" in self.aa_seq
+
+    @property
+    def has_ambiguous(self) -> bool:
+        """``True`` if the translated sequence contains an ambiguous residue
+        (``X``), typically caused by ambiguous nucleotides in the source."""
+        return "X" in self.aa_seq
+
 
 # ── Per-mechanism generators ─────────────────────────────────────────────
 

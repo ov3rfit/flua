@@ -31,6 +31,17 @@ class AnalyzedSequence:
     def nucleotide_seq(self) -> str:
         return str(self.record.seq)
 
+    @property
+    def has_stop_codon(self) -> bool:
+        """``True`` if the translated sequence contains a stop codon (``*``)."""
+        return self.aa_seq is not None and "*" in self.aa_seq
+
+    @property
+    def has_ambiguous(self) -> bool:
+        """``True`` if the translated sequence contains an ambiguous residue
+        (``X``), typically caused by ambiguous nucleotides in the source."""
+        return self.aa_seq is not None and "X" in self.aa_seq
+
     def get_product(self, name: str) -> AlternativeProduct | None:
         """Look up an alternative product by *name* (case-insensitive)."""
         for p in self.alt_products:

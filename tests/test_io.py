@@ -5,8 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
-from flua.io import groups_to_dataframe, load_fasta, load_multiple_fasta
+from flua.io import (
+    groups_to_dataframe,
+    load_fasta,
+    load_fasta_string,
+    load_multiple_fasta,
+)
+from flua.models import AnalyzedSequence, SequenceGroup
 
 
 class TestLoadFasta:
@@ -174,3 +183,139 @@ class TestGroupsToDataframe:
         assert len(msgs) == 1
         assert "PB2" in msgs[0]
         assert "differ" in msgs[0]
+
+
+# ── Helpers for quality-filtering tests ──────────────────────────────────
+
+
+def _make_group(group_name: str, segment: str, aa_seq: str) -> SequenceGroup:
+    """Build a minimal :class:`SequenceGroup` with a single segment sequence."""
+    record = SeqRecord(Seq("ATG" * 600), id=f"{group_name}|{segment}")
+    seq = AnalyzedSequence(
+        record=record,
+        seq_type="DNA",
+        aa_seq=aa_seq,
+        segment_name=segment,
+    )
+    group = SequenceGroup(group_name=group_name, source_file="<test>")
+    group.sequences.append(seq)
+    return group
+
+
+class TestQualityFiltering:
+    def test_default_preserves_stop_codon_sequences(self) -> None:
+        """Without any filter flags, stop-codon sequences appear as-is."""
+        group = _make_group("s", "HA", "MKT*L")
+        df, _ = groups_to_dataframe(
+            [group],
+            value_type="translated",
+            segment_names=["HA"],
+            include_alt_products=False,
+        )
+        assert df["HA_aa"].iloc[0] == "MKT*L"
+
+    def test_exclude_stop_codons_translated(self) -> None:
+        normal = _make_group("normal", "HA", "MKTLL")
+        flagged = _make_group("flagged", "HA", "MKT*L")
+        df, _ = groups_to_dataframe(
+            [normal, flagged],
+            value_type="translated",
+            segment_names=["HA"],
+            include_alt_products=False,
+            exclude_stop_codons=True,
+        )
+        assert df.loc[df["group_name"] == "normal", "HA_aa"].iloc[0] == "MKTLL"
+        assert pd.isna(df.loc[df["group_name"] == "flagged", "HA_aa"].iloc[0])
+
+    def test_exclude_stop_codons_raw(self) -> None:
+        """Exclusion applies to nucleotide columns too."""
+        normal = _make_group("normal", "HA", "MKTLL")
+        flagged = _make_group("flagged", "HA", "MKT*L")
+        df, _ = groups_to_dataframe(
+            [normal, flagged],
+            value_type="raw",
+            segment_names=["HA"],
+            include_alt_products=False,
+            exclude_stop_codons=True,
+        )
+        assert pd.notna(df.loc[df["group_name"] == "normal", "HA_nt"].iloc[0])
+        assert pd.isna(df.loc[df["group_name"] == "flagged", "HA_nt"].iloc[0])
+
+    def test_exclude_ambiguous(self) -> None:
+        normal = _make_group("normal", "HA", "MKTLL")
+        flagged = _make_group("flagged", "HA", "MKXLL")
+        df, _ = groups_to_dataframe(
+            [normal, flagged],
+            value_type="translated",
+            segment_names=["HA"],
+            include_alt_products=False,
+            exclude_ambiguous=True,
+        )
+        assert df.loc[df["group_name"] == "normal", "HA_aa"].iloc[0] == "MKTLL"
+        assert pd.isna(df.loc[df["group_name"] == "flagged", "HA_aa"].iloc[0])
+
+    def test_exclude_stop_codons_does_not_affect_ambiguous(self) -> None:
+        """exclude_stop_codons=True must not filter out ambiguous-only sequences."""
+        ambig = _make_group("ambig", "HA", "MKXLL")
+        df, _ = groups_to_dataframe(
+            [ambig],
+            value_type="translated",
+            segment_names=["HA"],
+            include_alt_products=False,
+            exclude_stop_codons=True,
+        )
+        assert df["HA_aa"].iloc[0] == "MKXLL"
+
+    def test_exclude_ambiguous_does_not_affect_stop_codons(self) -> None:
+        """exclude_ambiguous=True must not filter out stop-codon-only sequences."""
+        stop = _make_group("stop", "HA", "MKT*L")
+        df, _ = groups_to_dataframe(
+            [stop],
+            value_type="translated",
+            segment_names=["HA"],
+            include_alt_products=False,
+            exclude_ambiguous=True,
+        )
+        assert df["HA_aa"].iloc[0] == "MKT*L"
+
+    def test_other_segments_unaffected(self) -> None:
+        """Flagging one segment should not clear other segments in the same row."""
+        record_ha = SeqRecord(Seq("ATG" * 600), id="s|HA")
+        record_np = SeqRecord(Seq("ATG" * 600), id="s|NP")
+        seq_ha = AnalyzedSequence(
+            record=record_ha, seq_type="DNA", aa_seq="MKT*L", segment_name="HA"
+        )
+        seq_np = AnalyzedSequence(
+            record=record_np, seq_type="DNA", aa_seq="MKTLL", segment_name="NP"
+        )
+        group = SequenceGroup(group_name="mixed", source_file="<test>")
+        group.sequences.extend([seq_ha, seq_np])
+        df, _ = groups_to_dataframe(
+            [group],
+            value_type="translated",
+            segment_names=["HA", "NP"],
+            include_alt_products=False,
+            exclude_stop_codons=True,
+        )
+        assert pd.isna(df["HA_aa"].iloc[0])
+        assert df["NP_aa"].iloc[0] == "MKTLL"
+
+
+class TestLoadFastaString:
+    def test_returns_same_result_as_load_fasta(self, h1n1_fasta: Path) -> None:
+        fasta_text = h1n1_fasta.read_text()
+        from_file = load_fasta(h1n1_fasta)
+        from_str = load_fasta_string(fasta_text, group_name=h1n1_fasta.stem)
+        assert len(from_str.sequences) == len(from_file.sequences)
+        assert from_str.subtype == from_file.subtype
+        assert from_str.group_name == from_file.group_name
+
+    def test_source_file_is_string_sentinel(self, h1n1_fasta: Path) -> None:
+        fasta_text = h1n1_fasta.read_text()
+        group = load_fasta_string(fasta_text, group_name="test")
+        assert group.source_file == "<string>"
+
+    def test_group_name_is_required_and_used(self, h1n1_fasta: Path) -> None:
+        fasta_text = h1n1_fasta.read_text()
+        group = load_fasta_string(fasta_text, group_name="my_sample")
+        assert group.group_name == "my_sample"
