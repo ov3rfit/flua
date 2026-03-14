@@ -132,13 +132,11 @@ def groups_to_dataframe(
 
             if seq_obj is None:
                 row[f"{seg_name}{seq_suffix}"] = None
-                row[f"{seg_name}_type"] = None
             else:
                 if value_type == "translated" and seq_obj.translated is not None:
                     row[f"{seg_name}{seq_suffix}"] = seq_obj.translated
                 else:
                     row[f"{seg_name}{seq_suffix}"] = seq_obj.raw_sequence
-                row[f"{seg_name}_type"] = seq_obj.seq_type
 
             if include_alt_products and seg_name in all_alt_product_names:
                 for prod_name in sorted(all_alt_product_names[seg_name]):
