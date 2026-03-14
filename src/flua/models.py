@@ -15,13 +15,9 @@ class AnalyzedSequence:
 
     record: SeqRecord
     seq_type: str
-    translated: str | None
+    aa_seq: str | None
     segment_name: str | None
     alt_products: list[AlternativeProduct] = field(default_factory=list)
-    length: int = 0
-
-    def __post_init__(self) -> None:
-        self.length = len(self.record.seq)
 
     @property
     def id(self) -> str:
@@ -32,7 +28,7 @@ class AnalyzedSequence:
         return self.record.description
 
     @property
-    def raw_sequence(self) -> str:
+    def nucleotide_seq(self) -> str:
         return str(self.record.seq)
 
     def get_product(self, name: str) -> AlternativeProduct | None:

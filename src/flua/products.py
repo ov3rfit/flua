@@ -21,13 +21,7 @@ class AlternativeProduct:
     mechanism: str
     description: str
     nucleotide_seq: str
-    protein_seq: str
-    length_nt: int = 0
-    length_aa: int = 0
-
-    def __post_init__(self) -> None:
-        self.length_nt = len(self.nucleotide_seq)
-        self.length_aa = len(self.protein_seq)
+    aa_seq: str
 
 
 # ── Per-mechanism generators ─────────────────────────────────────────────
@@ -41,7 +35,7 @@ def _generate_direct(seq: str, pdef: dict) -> AlternativeProduct | None:
         mechanism="direct",
         description=pdef["description"],
         nucleotide_seq=seq,
-        protein_seq=protein,
+        aa_seq=protein,
     )
 
 
@@ -61,7 +55,7 @@ def _generate_spliced(seq: str, pdef: dict) -> AlternativeProduct | None:
         mechanism="splicing",
         description=pdef["description"],
         nucleotide_seq=spliced_nt,
-        protein_seq=protein,
+        aa_seq=protein,
     )
 
 
@@ -85,7 +79,7 @@ def _generate_alt_orf(seq: str, pdef: dict) -> AlternativeProduct | None:
                     mechanism="alt_orf",
                     description=pdef["description"],
                     nucleotide_seq=orf_nt,
-                    protein_seq=protein,
+                    aa_seq=protein,
                 )
     return None
 
@@ -116,7 +110,7 @@ def _generate_frameshift(seq: str, pdef: dict) -> AlternativeProduct | None:
         mechanism="frameshift",
         description=pdef["description"],
         nucleotide_seq=fusion_nt,
-        protein_seq=fusion_protein,
+        aa_seq=fusion_protein,
     )
 
 

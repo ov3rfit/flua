@@ -12,15 +12,15 @@ def print_group_summary(group: SequenceGroup) -> None:
     print(f"  Total sequences: {len(group.sequences)}")
     for seq in group.sequences:
         seg_label = seq.segment_name or "(unknown)"
-        trans_len = len(seq.translated) if seq.translated else "-"
+        aa_len = len(seq.aa_seq) if seq.aa_seq else "-"
         print(
             f"  [{seg_label}] {seq.id} | "
             f"type={seq.seq_type} | "
-            f"length={seq.length} | "
-            f"translated_length={trans_len}"
+            f"length={len(seq.nucleotide_seq)} | "
+            f"aa_length={aa_len}"
         )
         for p in seq.alt_products:
             print(
-                f"    └─ {p.name} ({p.mechanism}): {p.length_aa} aa | {p.description}"
+                f"    └─ {p.name} ({p.mechanism}): {len(p.aa_seq)} aa | {p.description}"
             )
     print()

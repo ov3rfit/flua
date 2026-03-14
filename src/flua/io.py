@@ -39,7 +39,7 @@ def load_fasta(
     for record in SeqIO.parse(str(filepath), "fasta"):
         seq_str = str(record.seq)
         seq_type = detect_sequence_type(seq_str)
-        translated = translate_sequence(seq_str, seq_type)
+        aa_seq = translate_sequence(seq_str, seq_type)
         segment = identify_segment(record.id, record.description, segment_names)
 
         subtype = extract_subtype(record.id, record.description)
@@ -53,7 +53,7 @@ def load_fasta(
         analyzed = AnalyzedSequence(
             record=record,
             seq_type=seq_type,
-            translated=translated,
+            aa_seq=aa_seq,
             segment_name=segment,
             alt_products=alt_products,
         )
@@ -104,7 +104,7 @@ def groups_to_dataframe(
     if segment_names is None:
         segment_names = INFLUENZA_SEGMENTS
 
-    seq_suffix = "_raw" if value_type == "raw" else "_aa"
+    seq_suffix = "_nt" if value_type == "raw" else "_aa"
 
     # Collect non-direct alternative product names across all groups.
     all_alt_product_names: dict[str, set[str]] = {}
@@ -133,10 +133,10 @@ def groups_to_dataframe(
             if seq_obj is None:
                 row[f"{seg_name}{seq_suffix}"] = None
             else:
-                if value_type == "translated" and seq_obj.translated is not None:
-                    row[f"{seg_name}{seq_suffix}"] = seq_obj.translated
+                if value_type == "translated" and seq_obj.aa_seq is not None:
+                    row[f"{seg_name}{seq_suffix}"] = seq_obj.aa_seq
                 else:
-                    row[f"{seg_name}{seq_suffix}"] = seq_obj.raw_sequence
+                    row[f"{seg_name}{seq_suffix}"] = seq_obj.nucleotide_seq
 
             if include_alt_products and seg_name in all_alt_product_names:
                 for prod_name in sorted(all_alt_product_names[seg_name]):
@@ -144,7 +144,7 @@ def groups_to_dataframe(
                     if seq_obj is not None:
                         product = seq_obj.get_product(prod_name)
                         row[col_key] = (
-                            product.protein_seq if product is not None else None
+                            product.aa_seq if product is not None else None
                         )
                     else:
                         row[col_key] = None

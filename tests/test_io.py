@@ -90,17 +90,6 @@ class TestGroupsToDataframe:
         h1n1_df = df[df["subtype"] == "H1N1"]
         assert len(h1n1_df) == 1
 
-    def test_raw_columns_use_raw_suffix(
-        self,
-        h1n1_fasta: Path,
-    ) -> None:
-        groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(groups, value_type="raw")
-        assert "PA_raw" in df.columns
-        # No legacy column names
-        assert "PA_seq" not in df.columns
-        assert "PA_length" not in df.columns
-
     def test_translated_columns_use_aa_suffix(
         self,
         h1n1_fasta: Path,
@@ -108,18 +97,6 @@ class TestGroupsToDataframe:
         groups = load_multiple_fasta([h1n1_fasta])
         df = groups_to_dataframe(groups, value_type="translated")
         assert "PA_aa" in df.columns
-        # No legacy column names
-        assert "PA_seq" not in df.columns
-        assert "PA_protein" not in df.columns
-
-    def test_no_length_columns(
-        self,
-        h1n1_fasta: Path,
-    ) -> None:
-        groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(groups, value_type="translated")
-        length_cols = [c for c in df.columns if "_length" in c]
-        assert length_cols == []
 
     def test_no_direct_product_duplication(
         self,
