@@ -33,7 +33,7 @@ def load_fasta(
     if group_name is None:
         group_name = filepath.stem
 
-    group = SequenceGroup(group_name=group_name, source_file=str(filepath))
+    group = SequenceGroup(group_name=group_name, source_file=filepath.name)
     detected_subtypes: list[str] = []
 
     for record in SeqIO.parse(str(filepath), "fasta"):
