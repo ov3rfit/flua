@@ -145,7 +145,9 @@ def groups_to_dataframe(
                     col_key = f"{prod_name}_aa"
                     if seq_obj is not None:
                         product = seq_obj.get_product(prod_name)
-                        row[col_key] = product.protein_seq if product is not None else None
+                        row[col_key] = (
+                            product.protein_seq if product is not None else None
+                        )
                     else:
                         row[col_key] = None
 

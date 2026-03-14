@@ -134,7 +134,11 @@ class TestGroupsToDataframe:
         # PB2 is a direct product — should NOT appear as PB2_protein or PB2_aa
         # alongside the segment column PB2_aa
         col_names = list(df.columns)
-        pb2_cols = [c for c in col_names if c.startswith("PB2_") and c != "PB2_aa" and c != "PB2_type"]
+        pb2_cols = [
+            c
+            for c in col_names
+            if c.startswith("PB2_") and c != "PB2_aa" and c != "PB2_type"
+        ]
         assert pb2_cols == [], f"Unexpected PB2 duplicate columns: {pb2_cols}"
 
     def test_alt_product_columns_present(
@@ -143,8 +147,13 @@ class TestGroupsToDataframe:
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta])
         df = groups_to_dataframe(groups, value_type="translated")
-        alt_cols = [c for c in df.columns if c.endswith("_aa") and c.split("_")[0] not in
-                    ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]]
+        alt_cols = [
+            c
+            for c in df.columns
+            if c.endswith("_aa")
+            and c.split("_")[0]
+            not in ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
+        ]
         assert len(alt_cols) > 0
 
     def test_alt_product_columns_absent_when_disabled(
@@ -152,10 +161,15 @@ class TestGroupsToDataframe:
         h1n1_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(groups, value_type="translated", include_alt_products=False)
+        df = groups_to_dataframe(
+            groups, value_type="translated", include_alt_products=False
+        )
         # Only segment _aa and _type columns should exist (plus metadata)
-        non_meta = [c for c in df.columns if c not in
-                    ("group_name", "source_file", "subtype", "num_sequences")]
+        non_meta = [
+            c
+            for c in df.columns
+            if c not in ("group_name", "source_file", "subtype", "num_sequences")
+        ]
         for col in non_meta:
             assert col.endswith("_aa") or col.endswith("_type")
             seg = col.rsplit("_", 1)[0]
