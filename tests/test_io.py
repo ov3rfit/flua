@@ -65,7 +65,7 @@ class TestGroupsToDataframe:
         unknown_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta, h5n1_fasta, unknown_fasta])
-        df = groups_to_dataframe(groups, value_type="translated")
+        df, _ = groups_to_dataframe(groups, value_type="translated")
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 3
 
@@ -75,7 +75,7 @@ class TestGroupsToDataframe:
         unknown_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta, unknown_fasta])
-        df = groups_to_dataframe(groups)
+        df, _ = groups_to_dataframe(groups)
         assert "subtype" in df.columns
         assert df.iloc[0]["subtype"] == "H1N1"
         assert pd.isna(df.iloc[1]["subtype"])
@@ -86,7 +86,7 @@ class TestGroupsToDataframe:
         h5n1_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta, h5n1_fasta])
-        df = groups_to_dataframe(groups)
+        df, _ = groups_to_dataframe(groups)
         h1n1_df = df[df["subtype"] == "H1N1"]
         assert len(h1n1_df) == 1
 
@@ -95,7 +95,7 @@ class TestGroupsToDataframe:
         h1n1_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(groups, value_type="translated")
+        df, _ = groups_to_dataframe(groups, value_type="translated")
         assert "PA_aa" in df.columns
 
     def test_no_direct_product_duplication(
@@ -105,7 +105,7 @@ class TestGroupsToDataframe:
         """Direct-mechanism products should not create separate columns
         since they duplicate the segment column."""
         groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(groups, value_type="translated")
+        df, _ = groups_to_dataframe(groups, value_type="translated")
         # PB2 is a direct product — should NOT appear as PB2_protein or PB2_aa
         # alongside the segment column PB2_aa
         col_names = list(df.columns)
@@ -117,7 +117,7 @@ class TestGroupsToDataframe:
         h1n1_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(groups, value_type="translated")
+        df, _ = groups_to_dataframe(groups, value_type="translated")
         alt_cols = [
             c
             for c in df.columns
@@ -132,7 +132,7 @@ class TestGroupsToDataframe:
         h1n1_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta])
-        df = groups_to_dataframe(
+        df, _ = groups_to_dataframe(
             groups, value_type="translated", include_alt_products=False
         )
         # Only segment _aa columns should exist (plus metadata)
@@ -145,3 +145,32 @@ class TestGroupsToDataframe:
             assert col.endswith("_aa")
             seg = col.rsplit("_", 1)[0]
             assert seg in ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
+
+    def test_returns_empty_warnings_when_lengths_consistent(
+        self,
+        h1n1_fasta: Path,
+        h5n1_fasta: Path,
+    ) -> None:
+        groups = load_multiple_fasta([h1n1_fasta, h5n1_fasta])
+        _, warn_messages = groups_to_dataframe(groups)
+        assert isinstance(warn_messages, list)
+
+    def test_returns_warnings_when_lengths_differ(
+        self,
+        h1n1_fasta: Path,
+        h5n1_fasta: Path,
+    ) -> None:
+        """groups_to_dataframe must return warning strings (not raise or emit)
+        when segment lengths differ across samples."""
+        from flua.io import _check_seq_length_consistency
+
+        groups = load_multiple_fasta([h1n1_fasta, h5n1_fasta])
+        df, _ = groups_to_dataframe(groups)
+
+        # Manually corrupt one sequence to force a length mismatch.
+        df2 = df.copy()
+        df2.loc[df2.index[0], "PB2_nt"] = "ATCG"  # much shorter than real PB2
+        msgs = _check_seq_length_consistency(df2, ["PB2"], "_nt")
+        assert len(msgs) == 1
+        assert "PB2" in msgs[0]
+        assert "differ" in msgs[0]

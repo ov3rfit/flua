@@ -83,7 +83,7 @@ def groups_to_dataframe(
     value_type: Literal["raw", "translated"] = "raw",
     segment_names: list[str] | None = None,
     include_alt_products: bool = True,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, list[str]]:
     """Convert a list of :class:`SequenceGroup` objects into a
     :class:`~pandas.DataFrame`.
 
@@ -100,6 +100,13 @@ def groups_to_dataframe(
     include_alt_products:
         If ``True``, add columns for non-direct alternative products
         (e.g. spliced, frameshift, alt_orf).
+
+    Returns
+    -------
+    tuple[pandas.DataFrame, list[str]]
+        A ``(df, warnings)`` tuple where ``warnings`` is a list of
+        human-readable messages about sequence-length inconsistencies
+        across samples.  An empty list means no issues were detected.
     """
     if segment_names is None:
         segment_names = INFLUENZA_SEGMENTS
@@ -150,19 +157,20 @@ def groups_to_dataframe(
         rows.append(row)
 
     df = pd.DataFrame(rows)
-    _check_seq_length_consistency(df, segment_names, seq_suffix)
-    return df
+    warn_messages = _check_seq_length_consistency(df, segment_names, seq_suffix)
+    return df, warn_messages
 
 
 def _check_seq_length_consistency(
     df: pd.DataFrame,
     segment_names: list[str],
     seq_suffix: str,
-) -> None:
-    """Emit a warning when sequence lengths for the same segment differ
-    across samples."""
+) -> list[str]:
+    """Return warning messages when sequence lengths for the same segment
+    differ across samples."""
+    messages: list[str] = []
     if len(df) < 2:
-        return
+        return messages
     for seg_name in segment_names:
         seq_col = f"{seg_name}{seq_suffix}"
         if seq_col not in df.columns:
@@ -176,8 +184,7 @@ def _check_seq_length_consistency(
                 for _, r in df.iterrows()
                 if pd.notna(r[seq_col])
             )
-            warnings.warn(
-                f"[{seg_name}] Sequence lengths differ across samples: {info}",
-                UserWarning,
-                stacklevel=3,
+            messages.append(
+                f"[{seg_name}] Sequence lengths differ across samples: {info}"
             )
+    return messages
