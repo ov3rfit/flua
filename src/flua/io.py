@@ -98,21 +98,25 @@ def groups_to_dataframe(
         Segment names to include as columns.  Defaults to
         :data:`~flua.constants.INFLUENZA_SEGMENTS`.
     include_alt_products:
-        If ``True``, add columns for each alternative product.
+        If ``True``, add columns for non-direct alternative products
+        (e.g. spliced, frameshift, alt_orf).
     """
     if segment_names is None:
         segment_names = INFLUENZA_SEGMENTS
 
-    # Collect alternative product names across all groups.
-    all_product_names: dict[str, set[str]] = {}
+    seq_suffix = "_raw" if value_type == "raw" else "_aa"
+
+    # Collect non-direct alternative product names across all groups.
+    all_alt_product_names: dict[str, set[str]] = {}
     if include_alt_products:
         for group in groups:
             for seq in group.sequences:
                 if seq.segment_name:
-                    if seq.segment_name not in all_product_names:
-                        all_product_names[seq.segment_name] = set()
                     for p in seq.alt_products:
-                        all_product_names[seq.segment_name].add(p.name)
+                        if p.mechanism != "direct":
+                            if seq.segment_name not in all_alt_product_names:
+                                all_alt_product_names[seq.segment_name] = set()
+                            all_alt_product_names[seq.segment_name].add(p.name)
 
     rows = []
     for group in groups:
@@ -127,58 +131,52 @@ def groups_to_dataframe(
             seq_obj = group.get_segment(seg_name)
 
             if seq_obj is None:
-                row[f"{seg_name}_seq"] = None
-                row[f"{seg_name}_length"] = None
+                row[f"{seg_name}{seq_suffix}"] = None
                 row[f"{seg_name}_type"] = None
             else:
                 if value_type == "translated" and seq_obj.translated is not None:
-                    row[f"{seg_name}_seq"] = seq_obj.translated
-                    row[f"{seg_name}_length"] = len(seq_obj.translated)
+                    row[f"{seg_name}{seq_suffix}"] = seq_obj.translated
                 else:
-                    row[f"{seg_name}_seq"] = seq_obj.raw_sequence
-                    row[f"{seg_name}_length"] = seq_obj.length
+                    row[f"{seg_name}{seq_suffix}"] = seq_obj.raw_sequence
                 row[f"{seg_name}_type"] = seq_obj.seq_type
 
-            if include_alt_products and seg_name in all_product_names:
-                for prod_name in sorted(all_product_names[seg_name]):
-                    col_key = f"{prod_name}_protein"
-                    col_len_key = f"{prod_name}_length_aa"
+            if include_alt_products and seg_name in all_alt_product_names:
+                for prod_name in sorted(all_alt_product_names[seg_name]):
+                    col_key = f"{prod_name}_aa"
                     if seq_obj is not None:
                         product = seq_obj.get_product(prod_name)
-                        if product is not None:
-                            row[col_key] = product.protein_seq
-                            row[col_len_key] = product.length_aa
-                        else:
-                            row[col_key] = None
-                            row[col_len_key] = None
+                        row[col_key] = product.protein_seq if product is not None else None
                     else:
                         row[col_key] = None
-                        row[col_len_key] = None
 
         rows.append(row)
 
     df = pd.DataFrame(rows)
-    _check_length_consistency(df, segment_names)
+    _check_seq_length_consistency(df, segment_names, seq_suffix)
     return df
 
 
-def _check_length_consistency(df: pd.DataFrame, segment_names: list[str]) -> None:
+def _check_seq_length_consistency(
+    df: pd.DataFrame,
+    segment_names: list[str],
+    seq_suffix: str,
+) -> None:
     """Emit a warning when sequence lengths for the same segment differ
     across samples."""
     if len(df) < 2:
         return
     for seg_name in segment_names:
-        length_col = f"{seg_name}_length"
-        if length_col not in df.columns:
+        seq_col = f"{seg_name}{seq_suffix}"
+        if seq_col not in df.columns:
             continue
-        lengths = df[length_col].dropna()
+        lengths = df[seq_col].dropna().str.len()
         if len(lengths) < 2:
             continue
         if len(lengths.unique()) > 1:
             info = ", ".join(
-                f"{r['group_name']}={r[length_col]}"
+                f"{r['group_name']}={len(r[seq_col])}"
                 for _, r in df.iterrows()
-                if pd.notna(r[length_col])
+                if pd.notna(r[seq_col])
             )
             warnings.warn(
                 f"[{seg_name}] Sequence lengths differ across samples: {info}",

@@ -90,11 +90,73 @@ class TestGroupsToDataframe:
         h1n1_df = df[df["subtype"] == "H1N1"]
         assert len(h1n1_df) == 1
 
+    def test_raw_columns_use_raw_suffix(
+        self,
+        h1n1_fasta: Path,
+    ) -> None:
+        groups = load_multiple_fasta([h1n1_fasta])
+        df = groups_to_dataframe(groups, value_type="raw")
+        assert "PA_raw" in df.columns
+        assert "PA_type" in df.columns
+        # No legacy column names
+        assert "PA_seq" not in df.columns
+        assert "PA_length" not in df.columns
+
+    def test_translated_columns_use_aa_suffix(
+        self,
+        h1n1_fasta: Path,
+    ) -> None:
+        groups = load_multiple_fasta([h1n1_fasta])
+        df = groups_to_dataframe(groups, value_type="translated")
+        assert "PA_aa" in df.columns
+        assert "PA_type" in df.columns
+        # No legacy column names
+        assert "PA_seq" not in df.columns
+        assert "PA_protein" not in df.columns
+
+    def test_no_length_columns(
+        self,
+        h1n1_fasta: Path,
+    ) -> None:
+        groups = load_multiple_fasta([h1n1_fasta])
+        df = groups_to_dataframe(groups, value_type="translated")
+        length_cols = [c for c in df.columns if "_length" in c]
+        assert length_cols == []
+
+    def test_no_direct_product_duplication(
+        self,
+        h1n1_fasta: Path,
+    ) -> None:
+        """Direct-mechanism products should not create separate columns
+        since they duplicate the segment column."""
+        groups = load_multiple_fasta([h1n1_fasta])
+        df = groups_to_dataframe(groups, value_type="translated")
+        # PB2 is a direct product — should NOT appear as PB2_protein or PB2_aa
+        # alongside the segment column PB2_aa
+        col_names = list(df.columns)
+        pb2_cols = [c for c in col_names if c.startswith("PB2_") and c != "PB2_aa" and c != "PB2_type"]
+        assert pb2_cols == [], f"Unexpected PB2 duplicate columns: {pb2_cols}"
+
     def test_alt_product_columns_present(
         self,
         h1n1_fasta: Path,
     ) -> None:
         groups = load_multiple_fasta([h1n1_fasta])
         df = groups_to_dataframe(groups, value_type="translated")
-        alt_cols = [c for c in df.columns if "_protein" in c or "_length_aa" in c]
+        alt_cols = [c for c in df.columns if c.endswith("_aa") and c.split("_")[0] not in
+                    ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]]
         assert len(alt_cols) > 0
+
+    def test_alt_product_columns_absent_when_disabled(
+        self,
+        h1n1_fasta: Path,
+    ) -> None:
+        groups = load_multiple_fasta([h1n1_fasta])
+        df = groups_to_dataframe(groups, value_type="translated", include_alt_products=False)
+        # Only segment _aa and _type columns should exist (plus metadata)
+        non_meta = [c for c in df.columns if c not in
+                    ("group_name", "source_file", "subtype", "num_sequences")]
+        for col in non_meta:
+            assert col.endswith("_aa") or col.endswith("_type")
+            seg = col.rsplit("_", 1)[0]
+            assert seg in ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
