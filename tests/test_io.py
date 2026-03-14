@@ -109,11 +109,7 @@ class TestGroupsToDataframe:
         # PB2 is a direct product — should NOT appear as PB2_protein or PB2_aa
         # alongside the segment column PB2_aa
         col_names = list(df.columns)
-        pb2_cols = [
-            c
-            for c in col_names
-            if c.startswith("PB2_") and c != "PB2_aa"
-        ]
+        pb2_cols = [c for c in col_names if c.startswith("PB2_") and c != "PB2_aa"]
         assert pb2_cols == [], f"Unexpected PB2 duplicate columns: {pb2_cols}"
 
     def test_alt_product_columns_present(
