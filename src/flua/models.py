@@ -57,6 +57,7 @@ class SequenceGroup:
     group_name: str
     source_file: str
     subtype: str | None = None
+    host: str | None = None
     sequences: list[AnalyzedSequence] = field(default_factory=list)
 
     @property

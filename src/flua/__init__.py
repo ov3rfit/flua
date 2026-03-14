@@ -10,6 +10,16 @@ from flua.io import (
     load_gisaid_fasta_string,
     load_multiple_fasta,
 )
+from flua.ml import (
+    AA_ALPHABET,
+    NT_ALPHABET,
+    check_length_consistency,
+    encode_subtype,
+    sequences_to_composition,
+    sequences_to_kmer_freq,
+    sequences_to_label_encoding,
+    sequences_to_one_hot,
+)
 from flua.models import AnalyzedSequence, SequenceGroup
 from flua.products import AlternativeProduct, generate_alternative_products
 from flua.seq_utils import (
@@ -40,4 +50,13 @@ __all__ = [
     "load_multiple_fasta",
     "print_group_summary",
     "translate_sequence",
+    # ML utilities
+    "AA_ALPHABET",
+    "NT_ALPHABET",
+    "check_length_consistency",
+    "encode_subtype",
+    "sequences_to_composition",
+    "sequences_to_kmer_freq",
+    "sequences_to_label_encoding",
+    "sequences_to_one_hot",
 ]

@@ -59,6 +59,27 @@ def h5n1_fasta(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
+def gisaid_fasta(tmp_path: Path) -> Path:
+    """Write a minimal multi-strain GISAID EpiFlu FASTA and return its path.
+
+    Header format: accession|strain|seg_num|segment|subtype|host
+    Two strains: one Human H1N1 (HA + NA) and one Swine H3N2 (HA only).
+    """
+    segments = [
+        ("EPI_ISL_001|A/California/07/2009|4|HA|H1N1|Human", 1776, 10),
+        ("EPI_ISL_001|A/California/07/2009|6|NA|H1N1|Human", 1413, 11),
+        ("EPI_ISL_002|A/swine/Iowa/1/2023|4|HA|H3N2|Swine", 1776, 20),
+    ]
+    lines: list[str] = []
+    for header, length, seed in segments:
+        lines.append(f">{header}")
+        lines.append(_make_coding_seq(length, seed=seed))
+    fp = tmp_path / "test_gisaid.fasta"
+    fp.write_text("\n".join(lines) + "\n")
+    return fp
+
+
+@pytest.fixture()
 def unknown_fasta(tmp_path: Path) -> Path:
     """Write a 2-segment FASTA file with no subtype info."""
     lines = [

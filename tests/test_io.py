@@ -13,6 +13,7 @@ from flua.io import (
     groups_to_dataframe,
     load_fasta,
     load_fasta_string,
+    load_gisaid_fasta,
     load_multiple_fasta,
 )
 from flua.models import AnalyzedSequence, SequenceGroup
@@ -148,7 +149,7 @@ class TestGroupsToDataframe:
         non_meta = [
             c
             for c in df.columns
-            if c not in ("group_name", "source_file", "subtype", "num_sequences")
+            if c not in ("group_name", "source_file", "subtype", "host", "num_sequences")
         ]
         for col in non_meta:
             assert col.endswith("_aa")
@@ -299,6 +300,36 @@ class TestQualityFiltering:
         )
         assert pd.isna(df["HA_aa"].iloc[0])
         assert df["NP_aa"].iloc[0] == "MKTLL"
+
+
+class TestGisaidHost:
+    def test_host_extracted_from_header(self, gisaid_fasta: Path) -> None:
+        groups = load_gisaid_fasta(gisaid_fasta)
+        hosts = {g.group_name: g.host for g in groups}
+        assert hosts["A/California/07/2009"] == "Human"
+        assert hosts["A/swine/Iowa/1/2023"] == "Swine"
+
+    def test_host_column_in_dataframe(self, gisaid_fasta: Path) -> None:
+        groups = load_gisaid_fasta(gisaid_fasta)
+        df, _ = groups_to_dataframe(groups, segment_names=["HA", "NA"])
+        assert "host" in df.columns
+        assert set(df["host"].dropna()) == {"Human", "Swine"}
+
+    def test_non_gisaid_fasta_host_is_none(self, h1n1_fasta: Path) -> None:
+        groups = load_multiple_fasta([h1n1_fasta])
+        df, _ = groups_to_dataframe(groups)
+        assert df["host"].isna().all()
+
+    def test_host_missing_from_header_is_none(self, tmp_path: Path) -> None:
+        """Headers without a host field (< 6 pipe-separated parts) yield None."""
+        import random
+
+        rng = random.Random(42)
+        seq = "ATG" + "".join(rng.choice("ATGC") for _ in range(1773))
+        fasta = tmp_path / "no_host.fasta"
+        fasta.write_text(">EPI_ISL_999|A/test/1/2020|4|HA|H1N1\n" + seq + "\n")
+        groups = load_gisaid_fasta(fasta)
+        assert groups[0].host is None
 
 
 class TestLoadFastaString:

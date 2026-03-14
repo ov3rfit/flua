@@ -92,6 +92,7 @@ def _build_gisaid_groups(
         )
         raw_subtype = parsed["subtype"] or ""
         subtype = extract_subtype(record.id, raw_subtype + " " + record.description)
+        host = parsed["host"] or None
 
         seq_str = str(record.seq)
         seq_type = detect_sequence_type(seq_str)
@@ -114,9 +115,13 @@ def _build_gisaid_groups(
                 group_name=strain,
                 source_file=source_file,
                 subtype=subtype,
+                host=host,
             )
-        elif subtype and not groups[strain].subtype:
-            groups[strain].subtype = subtype
+        else:
+            if subtype and not groups[strain].subtype:
+                groups[strain].subtype = subtype
+            if host and not groups[strain].host:
+                groups[strain].host = host
 
         groups[strain].sequences.append(analyzed)
 
@@ -167,10 +172,10 @@ def load_fasta_string(
 def _parse_gisaid_header(record_id: str) -> dict[str, str | None]:
     """Parse a pipe-delimited GISAID EpiFlu FASTA header.
 
-    Expected format: ``accession|strain|seg_num|segment|subtype|...``
+    Expected format: ``accession|strain|seg_num|segment|subtype|host|...``
 
-    Returns a dict with ``accession``, ``strain``, ``segment``, and
-    ``subtype`` keys.  Missing fields are ``None``.
+    Returns a dict with ``accession``, ``strain``, ``segment``, ``subtype``,
+    and ``host`` keys.  Missing fields are ``None``.
     """
     parts = record_id.split("|")
     return {
@@ -178,6 +183,7 @@ def _parse_gisaid_header(record_id: str) -> dict[str, str | None]:
         "strain": parts[1] if len(parts) > 1 else None,
         "segment": parts[3] if len(parts) > 3 else None,
         "subtype": parts[4] if len(parts) > 4 else None,
+        "host": parts[5] if len(parts) > 5 else None,
     }
 
 
@@ -347,6 +353,7 @@ def groups_to_dataframe(
             "group_name": group.group_name,
             "source_file": group.source_file,
             "subtype": group.subtype,
+            "host": group.host,
             "num_sequences": len(group.sequences),
         }
 
