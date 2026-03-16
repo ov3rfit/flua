@@ -20,7 +20,5 @@ def print_group_summary(group: SequenceGroup) -> None:
             f"aa_length={aa_len}"
         )
         for p in seq.alt_products:
-            print(
-                f"    └─ {p.name} ({p.mechanism}): {len(p.aa_seq)} aa"
-            )
+            print(f"    └─ {p.name} ({p.mechanism}): {len(p.aa_seq)} aa")
     print()

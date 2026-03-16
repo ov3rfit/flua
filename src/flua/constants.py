@@ -27,11 +27,22 @@ GENE_PRODUCTS: dict[str, list[dict]] = {
     ],
     "PB1": [
         {"name": "PB1", "mechanism": "direct"},
-        {"name": "PB1-F2", "mechanism": "alt_orf", "scan_frame": 1, "min_length_aa": 50},
+        {
+            "name": "PB1-F2",
+            "mechanism": "alt_orf",
+            "scan_frame": 1,
+            "min_length_aa": 50,
+        },
     ],
     "PA": [
         {"name": "PA", "mechanism": "direct"},
-        {"name": "PA-X", "mechanism": "frameshift", "frameshift_nt": 573, "shift": 1, "x_orf_length_aa": 61},
+        {
+            "name": "PA-X",
+            "mechanism": "frameshift",
+            "frameshift_nt": 573,
+            "shift": 1,
+            "x_orf_length_aa": 61,
+        },
     ],
     "HA": [
         {"name": "HA", "mechanism": "direct"},
