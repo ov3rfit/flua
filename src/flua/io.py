@@ -385,7 +385,7 @@ def groups_to_dataframe(
 
             if include_alt_products and seg_name in all_alt_product_names:
                 for prod_name in sorted(all_alt_product_names[seg_name]):
-                    col_key = f"{prod_name}_aa"
+                    col_key = f"{prod_name}{seq_suffix}"
                     if seq_obj is not None:
                         product = seq_obj.get_product(prod_name)
                         if product is None or _is_product_flagged(
@@ -393,7 +393,11 @@ def groups_to_dataframe(
                         ):
                             row[col_key] = None
                         else:
-                            row[col_key] = product.aa_seq
+                            row[col_key] = (
+                                product.aa_seq
+                                if value_type == "translated"
+                                else product.nt_seq
+                            )
                     else:
                         row[col_key] = None
 
