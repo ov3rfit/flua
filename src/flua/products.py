@@ -8,19 +8,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from flua.constants import ALTERNATIVE_PRODUCTS
+from flua.constants import GENE_PRODUCTS
 from flua.seq_utils import translate_frame1
 
 
 @dataclass
-class AlternativeProduct:
+class GeneProduct:
     """A single alternative protein product derived from an influenza
     segment."""
 
     name: str
     mechanism: str
-    description: str
-    nucleotide_seq: str
+    nt_seq: str
     aa_seq: str
 
     @property
@@ -38,19 +37,18 @@ class AlternativeProduct:
 # ── Per-mechanism generators ─────────────────────────────────────────────
 
 
-def _generate_direct(seq: str, pdef: dict) -> AlternativeProduct | None:
+def _generate_direct(seq: str, pdef: dict) -> GeneProduct | None:
     """Primary protein: full-length frame-1 translation."""
     protein = translate_frame1(seq)
-    return AlternativeProduct(
+    return GeneProduct(
         name=pdef["name"],
         mechanism="direct",
-        description=pdef["description"],
-        nucleotide_seq=seq,
+        nt_seq=seq,
         aa_seq=protein,
     )
 
 
-def _generate_spliced(seq: str, pdef: dict) -> AlternativeProduct | None:
+def _generate_spliced(seq: str, pdef: dict) -> GeneProduct | None:
     """Spliced product: join exon 1 + exon 2 then translate."""
     exon1_end = pdef["exon1_end"]
     exon2_start = pdef["exon2_start"]
@@ -61,16 +59,15 @@ def _generate_spliced(seq: str, pdef: dict) -> AlternativeProduct | None:
     spliced_nt = seq[:exon1_end] + seq[exon2_start:]
     protein = translate_frame1(spliced_nt)
 
-    return AlternativeProduct(
+    return GeneProduct(
         name=pdef["name"],
         mechanism="splicing",
-        description=pdef["description"],
-        nucleotide_seq=spliced_nt,
+        nt_seq=spliced_nt,
         aa_seq=protein,
     )
 
 
-def _generate_alt_orf(seq: str, pdef: dict) -> AlternativeProduct | None:
+def _generate_alt_orf(seq: str, pdef: dict) -> GeneProduct | None:
     """Alternative ORF: scan *scan_frame* for the first ATG and translate
     to the first stop codon."""
     scan_frame = pdef.get("scan_frame", 1)
@@ -85,17 +82,16 @@ def _generate_alt_orf(seq: str, pdef: dict) -> AlternativeProduct | None:
                 protein = protein[: protein.index("*")]
             if len(protein) >= min_length_aa:
                 orf_nt = seq[i : i + (len(protein) + 1) * 3]
-                return AlternativeProduct(
+                return GeneProduct(
                     name=pdef["name"],
                     mechanism="alt_orf",
-                    description=pdef["description"],
-                    nucleotide_seq=orf_nt,
+                    nt_seq=orf_nt,
                     aa_seq=protein,
                 )
     return None
 
 
-def _generate_frameshift(seq: str, pdef: dict) -> AlternativeProduct | None:
+def _generate_frameshift(seq: str, pdef: dict) -> GeneProduct | None:
     """Ribosomal frameshift: N-terminal domain (frame 0) fused with
     C-terminal domain (+*shift* frame)."""
     fs_nt = pdef["frameshift_nt"]
@@ -116,11 +112,10 @@ def _generate_frameshift(seq: str, pdef: dict) -> AlternativeProduct | None:
     fusion_protein = n_term_protein + c_term_protein
     fusion_nt = seq[: c_term_start + len(c_term_protein) * 3]
 
-    return AlternativeProduct(
+    return GeneProduct(
         name=pdef["name"],
         mechanism="frameshift",
-        description=pdef["description"],
-        nucleotide_seq=fusion_nt,
+        nt_seq=fusion_nt,
         aa_seq=fusion_protein,
     )
 
@@ -136,11 +131,11 @@ _GENERATORS = {
 # ── Public API ───────────────────────────────────────────────────────────
 
 
-def generate_alternative_products(
+def generate_gene_products(
     sequence: str,
     segment_name: str,
     product_defs: dict[str, list[dict]] | None = None,
-) -> list[AlternativeProduct]:
+) -> list[GeneProduct]:
     """Generate all alternative products for a given segment sequence.
 
     Parameters
@@ -151,14 +146,14 @@ def generate_alternative_products(
         One of the standard influenza A segment names (e.g. ``"PA"``).
     product_defs:
         Custom product definition table.  Defaults to
-        :data:`~flua.constants.ALTERNATIVE_PRODUCTS`.
+        :data:`~flua.constants.GENE_PRODUCTS`.
     """
     if product_defs is None:
-        product_defs = ALTERNATIVE_PRODUCTS
+        product_defs = GENE_PRODUCTS
 
     defs = product_defs.get(segment_name, [])
     if not defs:
-        defs = [{"name": segment_name, "mechanism": "direct", "description": ""}]
+        defs = [{"name": segment_name, "mechanism": "direct"}]
 
     products = []
     for pdef in defs:

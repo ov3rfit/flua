@@ -133,7 +133,7 @@ class TestGroupsToDataframe:
             for c in df.columns
             if c.endswith("_aa")
             and c.split("_")[0]
-            not in ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
+            not in ["PB2", "PB1", "PA", "HA", "NP", "NA", "M1", "NS1"]
         ]
         assert len(alt_cols) > 0
 
@@ -155,7 +155,7 @@ class TestGroupsToDataframe:
         for col in non_meta:
             assert col.endswith("_aa")
             seg = col.rsplit("_", 1)[0]
-            assert seg in ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
+            assert seg in ["PB2", "PB1", "PA", "HA", "NP", "NA", "M1", "NS1"]
 
     def test_returns_empty_warnings_when_lengths_consistent(
         self,
@@ -181,7 +181,7 @@ class TestGroupsToDataframe:
         # Manually corrupt one sequence to force a length mismatch.
         df2 = df.copy()
         df2.loc[df2.index[0], "PB2_nt"] = "ATCG"  # much shorter than real PB2
-        msgs = _check_seq_length_consistency(df2, ["PB2"], "_nt")
+        msgs = _check_seq_length_consistency(df2, {"PB2": "PB2_nt"})
         assert len(msgs) == 1
         assert "PB2" in msgs[0]
         assert "differ" in msgs[0]

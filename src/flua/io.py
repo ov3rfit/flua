@@ -12,9 +12,9 @@ import pandas as pd
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 
-from flua.constants import INFLUENZA_SEGMENTS
+from flua.constants import GENE_PRODUCTS, INFLUENZA_SEGMENTS
 from flua.models import AnalyzedSequence, SequenceGroup
-from flua.products import generate_alternative_products
+from flua.products import generate_gene_products
 from flua.seq_utils import (
     detect_sequence_type,
     extract_subtype,
@@ -52,7 +52,7 @@ def _build_sequence_group(
 
         alt_products: list = []
         if seq_type != "Protein" and segment is not None:
-            alt_products = generate_alternative_products(seq_str, segment)
+            alt_products = generate_gene_products(seq_str, segment)
 
         group.sequences.append(
             AnalyzedSequence(
@@ -100,7 +100,7 @@ def _build_gisaid_groups(
 
         alt_products: list = []
         if seq_type != "Protein" and segment is not None:
-            alt_products = generate_alternative_products(seq_str, segment)
+            alt_products = generate_gene_products(seq_str, segment)
 
         analyzed = AnalyzedSequence(
             record=record,
@@ -277,7 +277,7 @@ def _is_flagged(
 
 
 def _is_product_flagged(
-    product: AlternativeProduct,
+    product: GeneProduct,
     exclude_stop_codons: bool,
     exclude_ambiguous: bool,
 ) -> bool:
@@ -335,6 +335,18 @@ def groups_to_dataframe(
 
     seq_suffix = "_nt" if value_type == "raw" else "_aa"
 
+    # For translated output, use the direct product name as the column name
+    # (e.g. "MP" → "M1_aa", "NS" → "NS1_aa"). For raw nucleotide output the
+    # segment name itself is used unchanged.
+    def _seg_col(seg: str) -> str:
+        if value_type == "translated":
+            for pdef in GENE_PRODUCTS.get(seg, []):
+                if pdef.get("mechanism") == "direct":
+                    return f"{pdef['name']}{seq_suffix}"
+        return f"{seg}{seq_suffix}"
+
+    seg_col_map = {seg: _seg_col(seg) for seg in segment_names}
+
     # Collect non-direct alternative product names across all groups.
     all_alt_product_names: dict[str, set[str]] = {}
     if include_alt_products:
@@ -359,16 +371,17 @@ def groups_to_dataframe(
 
         for seg_name in segment_names:
             seq_obj = group.get_segment(seg_name)
+            col_name = seg_col_map[seg_name]
 
             if seq_obj is None or _is_flagged(
                 seq_obj, exclude_stop_codons, exclude_ambiguous
             ):
-                row[f"{seg_name}{seq_suffix}"] = None
+                row[col_name] = None
             else:
                 if value_type == "translated" and seq_obj.aa_seq is not None:
-                    row[f"{seg_name}{seq_suffix}"] = seq_obj.aa_seq
+                    row[col_name] = seq_obj.aa_seq
                 else:
-                    row[f"{seg_name}{seq_suffix}"] = seq_obj.nucleotide_seq
+                    row[col_name] = seq_obj.nt_seq
 
             if include_alt_products and seg_name in all_alt_product_names:
                 for prod_name in sorted(all_alt_product_names[seg_name]):
@@ -387,22 +400,20 @@ def groups_to_dataframe(
         rows.append(row)
 
     df = pd.DataFrame(rows)
-    warn_messages = _check_seq_length_consistency(df, segment_names, seq_suffix)
+    warn_messages = _check_seq_length_consistency(df, seg_col_map)
     return df, warn_messages
 
 
 def _check_seq_length_consistency(
     df: pd.DataFrame,
-    segment_names: list[str],
-    seq_suffix: str,
+    seg_col_map: dict[str, str],
 ) -> list[str]:
     """Return warning messages when sequence lengths for the same segment
     differ across samples."""
     messages: list[str] = []
     if len(df) < 2:
         return messages
-    for seg_name in segment_names:
-        seq_col = f"{seg_name}{seq_suffix}"
+    for seg_name, seq_col in seg_col_map.items():
         if seq_col not in df.columns:
             continue
         lengths = df[seq_col].dropna().str.len()

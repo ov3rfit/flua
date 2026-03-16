@@ -21,90 +21,33 @@ PROTEIN_ONLY_CHARS = set("FLIMSPHQEDKWRV")
 # Exact positions may vary slightly between strains.
 # ---------------------------------------------------------------------------
 
-ALTERNATIVE_PRODUCTS: dict[str, list[dict]] = {
+GENE_PRODUCTS: dict[str, list[dict]] = {
     "PB2": [
-        {
-            "name": "PB2",
-            "mechanism": "direct",
-            "description": "RNA-dependent RNA polymerase subunit PB2",
-        },
+        {"name": "PB2", "mechanism": "direct"},
     ],
     "PB1": [
-        {
-            "name": "PB1",
-            "mechanism": "direct",
-            "description": "RNA-dependent RNA polymerase subunit PB1",
-        },
-        {
-            "name": "PB1-F2",
-            "mechanism": "alt_orf",
-            "description": "Pro-apoptotic mitochondrial protein from +1 ORF of PB1",
-            "scan_frame": 1,
-            "min_length_aa": 50,
-        },
+        {"name": "PB1", "mechanism": "direct"},
+        {"name": "PB1-F2", "mechanism": "alt_orf", "scan_frame": 1, "min_length_aa": 50},
     ],
     "PA": [
-        {
-            "name": "PA",
-            "mechanism": "direct",
-            "description": "RNA-dependent RNA polymerase subunit PA",
-        },
-        {
-            "name": "PA-X",
-            "mechanism": "frameshift",
-            "description": "Host shutoff protein via +1 ribosomal frameshift of PA",
-            "frameshift_nt": 573,  # 191 codons * 3
-            "shift": 1,
-            "x_orf_length_aa": 61,
-        },
+        {"name": "PA", "mechanism": "direct"},
+        {"name": "PA-X", "mechanism": "frameshift", "frameshift_nt": 573, "shift": 1, "x_orf_length_aa": 61},
     ],
     "HA": [
-        {
-            "name": "HA",
-            "mechanism": "direct",
-            "description": "Hemagglutinin",
-        },
+        {"name": "HA", "mechanism": "direct"},
     ],
     "NP": [
-        {
-            "name": "NP",
-            "mechanism": "direct",
-            "description": "Nucleoprotein",
-        },
+        {"name": "NP", "mechanism": "direct"},
     ],
     "NA": [
-        {
-            "name": "NA",
-            "mechanism": "direct",
-            "description": "Neuraminidase",
-        },
+        {"name": "NA", "mechanism": "direct"},
     ],
     "MP": [
-        {
-            "name": "M1",
-            "mechanism": "direct",
-            "description": "Matrix protein 1 (unspliced colinear transcript)",
-        },
-        {
-            "name": "M2",
-            "mechanism": "splicing",
-            "description": "Ion channel protein (spliced from MP segment)",
-            "exon1_end": 51,
-            "exon2_start": 740,
-        },
+        {"name": "M1", "mechanism": "direct"},
+        {"name": "M2", "mechanism": "splicing", "exon1_end": 51, "exon2_start": 740},
     ],
     "NS": [
-        {
-            "name": "NS1",
-            "mechanism": "direct",
-            "description": "Non-structural protein 1 (unspliced colinear transcript)",
-        },
-        {
-            "name": "NEP",
-            "mechanism": "splicing",
-            "description": "Nuclear export protein / NS2 (spliced from NS segment)",
-            "exon1_end": 56,
-            "exon2_start": 529,
-        },
+        {"name": "NS1", "mechanism": "direct"},
+        {"name": "NEP", "mechanism": "splicing", "exon1_end": 56, "exon2_start": 529},
     ],
 }

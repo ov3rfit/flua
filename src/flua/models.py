@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from Bio.SeqRecord import SeqRecord
 
-from flua.products import AlternativeProduct
+from flua.products import GeneProduct
 
 
 @dataclass
@@ -17,7 +17,7 @@ class AnalyzedSequence:
     seq_type: str
     aa_seq: str | None
     segment_name: str | None
-    alt_products: list[AlternativeProduct] = field(default_factory=list)
+    alt_products: list[GeneProduct] = field(default_factory=list)
 
     @property
     def id(self) -> str:
@@ -28,7 +28,7 @@ class AnalyzedSequence:
         return self.record.description
 
     @property
-    def nucleotide_seq(self) -> str:
+    def nt_seq(self) -> str:
         return str(self.record.seq)
 
     @property
@@ -42,7 +42,7 @@ class AnalyzedSequence:
         (``X``), typically caused by ambiguous nucleotides in the source."""
         return self.aa_seq is not None and "X" in self.aa_seq
 
-    def get_product(self, name: str) -> AlternativeProduct | None:
+    def get_product(self, name: str) -> GeneProduct | None:
         """Look up an alternative product by *name* (case-insensitive)."""
         for p in self.alt_products:
             if p.name.upper() == name.upper():
@@ -72,7 +72,7 @@ class SequenceGroup:
                 return seq
         return None
 
-    def get_all_products(self) -> list[tuple[str | None, AlternativeProduct]]:
+    def get_all_products(self) -> list[tuple[str | None, GeneProduct]]:
         """Return ``(segment_name, product)`` pairs for every alternative
         product across all sequences in the group."""
         results = []

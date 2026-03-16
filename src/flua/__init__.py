@@ -1,6 +1,6 @@
 """flua – Influenza A FASTA sequence analysis toolkit."""
 
-from flua.constants import ALTERNATIVE_PRODUCTS, INFLUENZA_SEGMENTS
+from flua.constants import GENE_PRODUCTS, INFLUENZA_SEGMENTS
 from flua.display import print_group_summary
 from flua.io import (
     groups_to_dataframe,
@@ -21,7 +21,7 @@ from flua.ml import (
     sequences_to_one_hot,
 )
 from flua.models import AnalyzedSequence, SequenceGroup
-from flua.products import AlternativeProduct, generate_alternative_products
+from flua.products import GeneProduct, generate_gene_products
 from flua.seq_utils import (
     detect_sequence_type,
     extract_subtype,
@@ -31,16 +31,16 @@ from flua.seq_utils import (
 
 __all__ = [
     # Constants
-    "ALTERNATIVE_PRODUCTS",
+    "GENE_PRODUCTS",
     "INFLUENZA_SEGMENTS",
     # Models
-    "AlternativeProduct",
+    "GeneProduct",
     "AnalyzedSequence",
     "SequenceGroup",
     # Functions
     "detect_sequence_type",
     "extract_subtype",
-    "generate_alternative_products",
+    "generate_gene_products",
     "groups_to_dataframe",
     "identify_segment",
     "load_fasta",

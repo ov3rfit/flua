@@ -1,4 +1,4 @@
-"""Tests for quality flags on AnalyzedSequence and AlternativeProduct."""
+"""Tests for quality flags on AnalyzedSequence and GeneProduct."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from flua.models import AnalyzedSequence
-from flua.products import AlternativeProduct
+from flua.products import GeneProduct
 
 
 def _make_seq(aa_seq: str | None) -> AnalyzedSequence:
@@ -19,12 +19,11 @@ def _make_seq(aa_seq: str | None) -> AnalyzedSequence:
     )
 
 
-def _make_product(aa_seq: str) -> AlternativeProduct:
-    return AlternativeProduct(
+def _make_product(aa_seq: str) -> GeneProduct:
+    return GeneProduct(
         name="M2",
         mechanism="splicing",
-        description="test",
-        nucleotide_seq="ATG",
+        nt_seq="ATG",
         aa_seq=aa_seq,
     )
 
@@ -56,7 +55,7 @@ class TestAnalyzedSequenceFlags:
         assert not seq.has_ambiguous
 
 
-class TestAlternativeProductFlags:
+class TestGeneProductFlags:
     def test_no_flags_on_normal_product(self) -> None:
         prod = _make_product("MKTLL")
         assert not prod.has_stop_codon
