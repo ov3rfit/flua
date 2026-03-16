@@ -185,6 +185,7 @@ def sequences_to_composition(
 
     data: dict[str, list[float]] = {}
     for char in alphabet:
+
         def _count(s: object, c: str = char) -> float:
             if not isinstance(s, str) or len(s) == 0:
                 return 0.0

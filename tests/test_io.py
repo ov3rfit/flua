@@ -149,7 +149,8 @@ class TestGroupsToDataframe:
         non_meta = [
             c
             for c in df.columns
-            if c not in ("group_name", "source_file", "subtype", "host", "num_sequences")
+            if c
+            not in ("group_name", "source_file", "subtype", "host", "num_sequences")
         ]
         for col in non_meta:
             assert col.endswith("_aa")

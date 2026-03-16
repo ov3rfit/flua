@@ -50,6 +50,7 @@ Issues = "https://github.com/ov3rfit/flua/issues"
 exclude = [
     "notebooks/",
     "tests/",
+    "temp/",
     ".github/",
 ]
 
