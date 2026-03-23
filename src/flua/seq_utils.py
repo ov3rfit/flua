@@ -14,7 +14,7 @@ from flua.constants import INFLUENZA_SEGMENTS, PROTEIN_ONLY_CHARS
 
 
 def detect_sequence_type(sequence: str) -> Literal["DNA", "RNA", "Protein"]:
-    """Classify *sequence* as DNA, RNA, or Protein based on its character
+    """Classify sequence as DNA, RNA, or Protein based on its character
     composition."""
     seq_upper = sequence.upper().replace("-", "").replace(".", "")
     unique_chars = set(seq_upper)
@@ -30,7 +30,7 @@ def detect_sequence_type(sequence: str) -> Literal["DNA", "RNA", "Protein"]:
 
 
 def translate_frame1(sequence: str) -> str:
-    """Translate *sequence* in reading frame 1 (offset 0).
+    """Translate sequence in reading frame 1 (offset 0).
 
     Trailing nucleotides that do not form a complete codon are discarded.
     """
@@ -42,7 +42,7 @@ def translate_frame1(sequence: str) -> str:
 
 
 def translate_sequence(sequence: str, seq_type: str) -> str | None:
-    """Return the frame-1 translation of *sequence*, or ``None`` if it is
+    """Return the frame-1 translation of sequence, or ``None`` if it is
     already a protein."""
     if seq_type == "Protein":
         return None
@@ -107,7 +107,7 @@ def _build_segment_patterns(
 
     Longer names are matched first so that e.g. ``"PB1-F2"`` takes
     priority over ``"PB1"``.  Word boundaries are defined by characters
-    that are *not* alphanumeric or hyphens, preventing ``"PA"`` from
+    that are not alphanumeric or hyphens, preventing ``"PA"`` from
     matching inside ``"PA-X"``.
     """
     sorted_names = sorted(segment_names, key=len, reverse=True)

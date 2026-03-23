@@ -267,7 +267,7 @@ def _is_flagged(
     exclude_stop_codons: bool,
     exclude_ambiguous: bool,
 ) -> bool:
-    """Return ``True`` if *seq_obj* should be excluded from the DataFrame
+    """Return ``True`` if seq_obj should be excluded from the DataFrame
     based on the caller's quality filters."""
     if exclude_stop_codons and seq_obj.has_stop_codon:
         return True
@@ -281,7 +281,7 @@ def _is_product_flagged(
     exclude_stop_codons: bool,
     exclude_ambiguous: bool,
 ) -> bool:
-    """Return ``True`` if *product* should be excluded from the DataFrame."""
+    """Return ``True`` if product should be excluded from the DataFrame."""
     if exclude_stop_codons and product.has_stop_codon:
         return True
     if exclude_ambiguous and product.has_ambiguous:

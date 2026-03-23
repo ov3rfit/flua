@@ -9,6 +9,21 @@ INFLUENZA_SEGMENTS = ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
 PROTEIN_ONLY_CHARS = set("FLIMSPHQEDKWRV")
 
 # ---------------------------------------------------------------------------
+# Sequence alphabets
+# ---------------------------------------------------------------------------
+
+#: Standard nucleotide alphabet (DNA).
+NT_ALPHABET: str = "ACGT"
+
+#: Standard 20 amino-acid alphabet (IUPAC single-letter codes, uppercase).
+AA_ALPHABET: str = "ACDEFGHIKLMNPQRSTVWY"
+
+#: Extended amino-acid alphabet: standard 20 + stop codon (``*``) + ambiguous
+#: residue (``X``).  Use this when real-world sequences may contain stop
+#: codons (frameshifts, sequencing artefacts) or IUPAC ambiguity codes.
+AA_ALPHABET_EXTENDED: str = "ACDEFGHIKLMNPQRSTVWY*X"
+
+# ---------------------------------------------------------------------------
 # Influenza A alternative product definitions
 # ---------------------------------------------------------------------------
 # Mechanism types:

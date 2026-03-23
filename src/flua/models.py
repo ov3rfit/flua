@@ -43,7 +43,7 @@ class AnalyzedSequence:
         return self.aa_seq is not None and "X" in self.aa_seq
 
     def get_product(self, name: str) -> GeneProduct | None:
-        """Look up an alternative product by *name* (case-insensitive)."""
+        """Look up an alternative product by name (case-insensitive)."""
         for p in self.alt_products:
             if p.name.upper() == name.upper():
                 return p
@@ -65,7 +65,7 @@ class SequenceGroup:
         return [s.segment_name for s in self.sequences]
 
     def get_segment(self, name: str) -> AnalyzedSequence | None:
-        """Return the sequence whose segment name matches *name*
+        """Return the sequence whose segment name matches name
         (case-insensitive)."""
         for seq in self.sequences:
             if seq.segment_name and seq.segment_name.upper() == name.upper():

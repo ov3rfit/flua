@@ -68,7 +68,7 @@ def _generate_spliced(seq: str, pdef: dict) -> GeneProduct | None:
 
 
 def _generate_alt_orf(seq: str, pdef: dict) -> GeneProduct | None:
-    """Alternative ORF: scan *scan_frame* for the first ATG and translate
+    """Alternative ORF: scan scan_frame for the first ATG and translate
     to the first stop codon."""
     scan_frame = pdef.get("scan_frame", 1)
     min_length_aa = pdef.get("min_length_aa", 50)
@@ -93,7 +93,7 @@ def _generate_alt_orf(seq: str, pdef: dict) -> GeneProduct | None:
 
 def _generate_frameshift(seq: str, pdef: dict) -> GeneProduct | None:
     """Ribosomal frameshift: N-terminal domain (frame 0) fused with
-    C-terminal domain (+*shift* frame)."""
+    C-terminal domain (+shift frame)."""
     fs_nt = pdef["frameshift_nt"]
     shift = pdef.get("shift", 1)
     x_orf_aa_len = pdef.get("x_orf_length_aa", 61)

@@ -6,15 +6,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from flua.constants import AA_ALPHABET, NT_ALPHABET
 from flua.ml import (
-    AA_ALPHABET,
-    NT_ALPHABET,
     check_length_consistency,
     encode_subtype,
     sequences_to_composition,
     sequences_to_kmer_freq,
-    sequences_to_label_encoding,
-    sequences_to_one_hot,
 )
 
 # ---------------------------------------------------------------------------
@@ -199,113 +196,6 @@ class TestSequencesToKmerFreq:
         assert result.iloc[0].sum() == 0.0
 
 
-# ---------------------------------------------------------------------------
-# sequences_to_label_encoding
-# ---------------------------------------------------------------------------
-
-
-class TestSequencesToLabelEncoding:
-    def test_shape(self) -> None:
-        df = _df(AA_SEQS)
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=10, alphabet=AA_ALPHABET
-        )
-        assert result.shape == (3, 10)
-
-    def test_dtype(self) -> None:
-        df = _df(AA_SEQS)
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=5, alphabet=AA_ALPHABET
-        )
-        assert result.dtype == np.int16
-
-    def test_known_chars_nonzero(self) -> None:
-        df = _df(["M"])
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=5, alphabet=AA_ALPHABET
-        )
-        # 'M' is at index 9 in AA_ALPHABET (0-based) → encoded as 10 (1-based)
-        assert result[0, 0] == AA_ALPHABET.index("M") + 1
-
-    def test_padding_is_zero(self) -> None:
-        df = _df(["M"])  # length 1, padded to 5
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=5, alphabet=AA_ALPHABET
-        )
-        assert result[0, 1] == 0
-        assert result[0, 4] == 0
-
-    def test_truncation(self) -> None:
-        df = _df(["MKTLL"])  # length 5, truncated to 3
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=3, alphabet=AA_ALPHABET
-        )
-        assert result.shape[1] == 3
-
-    def test_unknown_char_is_zero(self) -> None:
-        df = _df(["MX"])  # 'X' not in AA_ALPHABET
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=5, alphabet=AA_ALPHABET
-        )
-        assert result[0, 1] == 0
-
-    def test_nan_row_is_zeros(self) -> None:
-        df = _df([None])
-        result = sequences_to_label_encoding(
-            df, "HA_aa", length=5, alphabet=AA_ALPHABET
-        )
-        assert (result[0] == 0).all()
-
-
-# ---------------------------------------------------------------------------
-# sequences_to_one_hot
-# ---------------------------------------------------------------------------
-
-
-class TestSequencesToOneHot:
-    def test_shape(self) -> None:
-        df = _df(AA_SEQS)
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        assert result.shape == (3, 5, len(AA_ALPHABET))
-
-    def test_dtype(self) -> None:
-        df = _df(AA_SEQS)
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        assert result.dtype == np.float32
-
-    def test_known_position_is_one_hot(self) -> None:
-        df = _df(["M"])
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        idx = AA_ALPHABET.index("M")
-        assert result[0, 0, idx] == 1.0
-        assert result[0, 0].sum() == 1.0
-
-    def test_padding_positions_all_zero(self) -> None:
-        df = _df(["M"])  # length 1, padded to 5
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        assert result[0, 1].sum() == 0.0
-        assert result[0, 4].sum() == 0.0
-
-    def test_truncation(self) -> None:
-        df = _df(["MKTLL"])
-        result = sequences_to_one_hot(df, "HA_aa", length=3, alphabet=AA_ALPHABET)
-        assert result.shape == (1, 3, len(AA_ALPHABET))
-
-    def test_unknown_char_all_zero(self) -> None:
-        df = _df(["MX"])
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        assert result[0, 1].sum() == 0.0
-
-    def test_nan_row_all_zero(self) -> None:
-        df = _df([None])
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        assert result[0].sum() == 0.0
-
-    def test_flatten_for_linear_model(self) -> None:
-        df = _df(AA_SEQS)
-        result = sequences_to_one_hot(df, "HA_aa", length=5, alphabet=AA_ALPHABET)
-        flat = result.reshape(len(df), -1)
-        assert flat.shape == (3, 5 * len(AA_ALPHABET))
 
 
 # ---------------------------------------------------------------------------

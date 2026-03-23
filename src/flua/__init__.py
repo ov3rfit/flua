@@ -1,7 +1,18 @@
 """flua – Influenza A FASTA sequence analysis toolkit."""
 
-from flua.constants import GENE_PRODUCTS, INFLUENZA_SEGMENTS
+from flua.constants import (
+    AA_ALPHABET,
+    AA_ALPHABET_EXTENDED,
+    GENE_PRODUCTS,
+    INFLUENZA_SEGMENTS,
+    NT_ALPHABET,
+)
 from flua.display import print_group_summary
+from flua.encoding import (
+    PositionalOneHotEncoder,
+    sequences_to_label_encoding,
+    sequences_to_ohe_tensor,
+)
 from flua.io import (
     groups_to_dataframe,
     load_fasta,
@@ -11,14 +22,10 @@ from flua.io import (
     load_multiple_fasta,
 )
 from flua.ml import (
-    AA_ALPHABET,
-    NT_ALPHABET,
     check_length_consistency,
     encode_subtype,
     sequences_to_composition,
     sequences_to_kmer_freq,
-    sequences_to_label_encoding,
-    sequences_to_one_hot,
 )
 from flua.models import AnalyzedSequence, SequenceGroup
 from flua.products import GeneProduct, generate_gene_products
@@ -31,6 +38,9 @@ from flua.seq_utils import (
 
 __all__ = [
     # Constants
+    "AA_ALPHABET",
+    "AA_ALPHABET_EXTENDED",
+    "NT_ALPHABET",
     "GENE_PRODUCTS",
     "INFLUENZA_SEGMENTS",
     # Models
@@ -50,13 +60,13 @@ __all__ = [
     "load_multiple_fasta",
     "print_group_summary",
     "translate_sequence",
+    # Positional encoders
+    "PositionalOneHotEncoder",
+    "sequences_to_label_encoding",
+    "sequences_to_ohe_tensor",
     # ML utilities
-    "AA_ALPHABET",
-    "NT_ALPHABET",
     "check_length_consistency",
     "encode_subtype",
     "sequences_to_composition",
     "sequences_to_kmer_freq",
-    "sequences_to_label_encoding",
-    "sequences_to_one_hot",
 ]

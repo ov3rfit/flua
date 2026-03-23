@@ -13,19 +13,27 @@ Typical workflow
        from flua.ml import check_length_consistency
        print(check_length_consistency(df))
 
-3. Choose an encoding strategy and build feature matrices::
+3. Choose an encoding strategy::
 
        from flua.ml import sequences_to_kmer_freq, encode_subtype
+       from flua.encoding import sequences_to_ohe_tensor, PositionalOneHotEncoder
+
        X = sequences_to_kmer_freq(df, col="HA_aa", k=3)
        y, label_map = encode_subtype(df)
 
 Available encodings
 -------------------
-- :func:`sequences_to_composition`  — character-frequency vector (length-independent)
-- :func:`sequences_to_kmer_freq`    — k-mer frequency vector (length-independent)
-- :func:`sequences_to_label_encoding` — integer-per-position array (requires fixed length)
-- :func:`sequences_to_one_hot`      — one-hot array (requires fixed length)
-- :func:`encode_subtype`            — label-encode the ``subtype`` column
+Length-independent (no alignment required):
+
+- :func:`sequences_to_composition` — character-frequency vector
+- :func:`sequences_to_kmer_freq`   — k-mer frequency vector
+- :func:`encode_subtype`           — label-encode a categorical target column
+
+Fixed-length positional encodings (see :mod:`flua.encoding`):
+
+- :func:`~flua.encoding.sequences_to_label_encoding` — integer per position
+- :func:`~flua.encoding.sequences_to_ohe_tensor`     — 3-D one-hot tensor
+- :class:`~flua.encoding.PositionalOneHotEncoder`    — flat 2-D sklearn matrix
 """
 
 from __future__ import annotations
@@ -36,12 +44,7 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Default alphabets
-# ---------------------------------------------------------------------------
-
-NT_ALPHABET = "ACGT"
-AA_ALPHABET = "ACDEFGHIKLMNPQRSTVWY"
+from flua.constants import AA_ALPHABET, NT_ALPHABET
 
 
 def _infer_alphabet(series: pd.Series) -> str:
@@ -70,9 +73,8 @@ def check_length_consistency(
 ) -> pd.DataFrame:
     """Return per-column sequence-length statistics.
 
-    Use this before any fixed-length encoding (:func:`sequences_to_label_encoding`,
-    :func:`sequences_to_one_hot`) to decide on a safe ``length`` value and to
-    spot problematic samples.
+    Use this before any fixed-length encoding to decide on a safe ``length``
+    value and to spot problematic samples.
 
     Parameters
     ----------
@@ -80,7 +82,7 @@ def check_length_consistency(
         DataFrame produced by :func:`~flua.io.groups_to_dataframe`, or any
         DataFrame whose columns contain string sequences.
     seq_cols:
-        Columns to analyse.  When *None*, columns whose names end with
+        Columns to analyse.  When None, columns whose names end with
         ``_nt`` or ``_aa`` are used; if none are found, all ``object``-dtype
         columns are used.
 
@@ -94,7 +96,7 @@ def check_length_consistency(
         * ``min_len``       — shortest sequence length
         * ``max_len``       — longest sequence length
         * ``mean_len``      — mean length (rounded to 1 decimal place)
-        * ``std_len``       — standard deviation of lengths (0.0 when *count* ≤ 1)
+        * ``std_len``       — standard deviation of lengths (0.0 when count <= 1)
         * ``is_consistent`` — ``True`` when all sequences share the same length
     """
     if seq_cols is None:
@@ -150,8 +152,8 @@ def sequences_to_composition(
 ) -> pd.DataFrame:
     """Convert a sequence column into a character-frequency (composition) matrix.
 
-    Each character in *alphabet* becomes one feature column.  The result is
-    **length-independent** and works even when sequences vary in length across
+    Each character in the alphabet becomes one feature column.  The result is
+    length-independent and works even when sequences vary in length across
     samples.
 
     Parameters
@@ -161,8 +163,7 @@ def sequences_to_composition(
     col:
         Name of the sequence column (e.g. ``"HA_aa"``).
     alphabet:
-        Characters to count.  Auto-detected (nucleotide vs. amino acid) when
-        *None*.
+        Characters to count.  Auto-detected (nucleotide vs. amino acid) when None.
     normalize:
         When ``True`` (default), divide counts by sequence length to produce
         relative frequencies in [0, 1].  When ``False``, return raw counts.
@@ -212,7 +213,7 @@ def sequences_to_kmer_freq(
     """Convert a sequence column into a k-mer frequency matrix.
 
     All ``len(alphabet)**k`` possible k-mers become feature columns.  Like
-    :func:`sequences_to_composition`, the result is **length-independent**.
+    :func:`sequences_to_composition`, the result is length-independent.
     k-mer frequencies capture local sequence patterns (e.g. amino-acid triplets
     for structure/function, trinucleotides for codon usage).
 
@@ -229,7 +230,7 @@ def sequences_to_kmer_freq(
         * ``k=2`` — dipeptide / dinucleotide frequencies
         * ``k=3`` — tripeptide / trinucleotide (codon) frequencies
     alphabet:
-        Characters to enumerate.  Auto-detected when *None*.
+        Characters to enumerate.  Auto-detected when None.
     normalize:
         When ``True`` (default), divide each count by the total number of
         k-mers in the sequence.
@@ -277,129 +278,6 @@ def sequences_to_kmer_freq(
 
 
 # ---------------------------------------------------------------------------
-# Integer (label) encoding
-# ---------------------------------------------------------------------------
-
-
-def sequences_to_label_encoding(
-    df: pd.DataFrame,
-    col: str,
-    length: int,
-    alphabet: str | None = None,
-) -> np.ndarray:
-    """Convert a sequence column into an integer-encoded 2-D array.
-
-    Each character maps to a positive integer (1-based).  Sequences are
-    right-padded with zeros or truncated to exactly *length* positions.
-    Unknown characters and padding positions are encoded as ``0``.
-
-    Use this encoding when feeding sequences to an **embedding layer** in a
-    deep-learning model (PyTorch, TensorFlow/Keras).
-
-    .. tip::
-       Use :func:`check_length_consistency` first to choose a safe *length*
-       value (e.g. the maximum observed length).
-
-    Parameters
-    ----------
-    df:
-        Source DataFrame.
-    col:
-        Name of the sequence column.
-    length:
-        Output sequence length (truncate if longer, zero-pad if shorter).
-    alphabet:
-        Characters to map.  Auto-detected when *None*.
-
-    Returns
-    -------
-    numpy.ndarray
-        Shape ``(len(df), length)``, dtype ``int16``.
-
-    Examples
-    --------
-    >>> X = sequences_to_label_encoding(df, "HA_aa", length=566)
-    >>> X.shape
-    (100, 566)
-    """
-    series = df[col]
-    if alphabet is None:
-        alphabet = _infer_alphabet(series)
-    char_to_idx: dict[str, int] = {c: i + 1 for i, c in enumerate(alphabet)}
-
-    result = np.zeros((len(df), length), dtype=np.int16)
-    for row_i, seq in enumerate(series):
-        if not isinstance(seq, str):
-            continue
-        for col_j, char in enumerate(seq.upper()[:length]):
-            result[row_i, col_j] = char_to_idx.get(char, 0)
-
-    return result
-
-
-# ---------------------------------------------------------------------------
-# One-hot encoding
-# ---------------------------------------------------------------------------
-
-
-def sequences_to_one_hot(
-    df: pd.DataFrame,
-    col: str,
-    length: int,
-    alphabet: str | None = None,
-) -> np.ndarray:
-    """Convert a sequence column into a one-hot encoded 3-D array.
-
-    Each position becomes a binary vector of length ``len(alphabet)``.
-    Padding positions and unknown characters are all-zero vectors.
-
-    Use this encoding for **CNN** or **transformer** models that operate
-    directly on position-wise feature tensors.
-
-    Parameters
-    ----------
-    df:
-        Source DataFrame.
-    col:
-        Name of the sequence column.
-    length:
-        Fixed sequence length (truncate or zero-pad as needed).
-    alphabet:
-        Characters to encode.  Auto-detected when *None*.
-
-    Returns
-    -------
-    numpy.ndarray
-        Shape ``(len(df), length, len(alphabet))``, dtype ``float32``.
-        Reshape to ``(N, length * alphabet_size)`` to feed into a simple
-        linear model.
-
-    Examples
-    --------
-    >>> X = sequences_to_one_hot(df, "HA_aa", length=566)
-    >>> X.shape
-    (100, 566, 20)
-    >>> X_flat = X.reshape(len(df), -1)   # (100, 11320) for linear models
-    """
-    series = df[col]
-    if alphabet is None:
-        alphabet = _infer_alphabet(series)
-    char_to_idx: dict[str, int] = {c: i for i, c in enumerate(alphabet)}
-    n_chars = len(alphabet)
-
-    result = np.zeros((len(df), length, n_chars), dtype=np.float32)
-    for row_i, seq in enumerate(series):
-        if not isinstance(seq, str):
-            continue
-        for col_j, char in enumerate(seq.upper()[:length]):
-            idx = char_to_idx.get(char)
-            if idx is not None:
-                result[row_i, col_j, idx] = 1.0
-
-    return result
-
-
-# ---------------------------------------------------------------------------
 # Subtype (target) encoding
 # ---------------------------------------------------------------------------
 
@@ -427,7 +305,7 @@ def encode_subtype(
     -------
     tuple[pd.Series | pd.DataFrame, dict[str, int]]
         * First element: encoded target.  ``pd.Series`` for ``"label"``
-          (``NaN`` → ``-1``), ``pd.DataFrame`` for ``"one_hot"``
+          (``NaN`` -> ``-1``), ``pd.DataFrame`` for ``"one_hot"``
           (``NaN`` rows are all-zero).
         * Second element: ``{subtype_string: integer_label}`` mapping.
 
