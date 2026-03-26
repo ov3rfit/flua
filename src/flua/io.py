@@ -404,8 +404,27 @@ def groups_to_dataframe(
         rows.append(row)
 
     df = pd.DataFrame(rows)
-    warn_messages = _check_seq_length_consistency(df, seg_col_map)
+    warn_messages = _collect_degenerate_warnings(groups, segment_names)
+    warn_messages += _check_seq_length_consistency(df, seg_col_map)
     return df, warn_messages
+
+
+def _collect_degenerate_warnings(
+    groups: list[SequenceGroup],
+    segment_names: list[str],
+) -> list[str]:
+    """Return warning messages when segment sequences contain IUPAC ambiguity
+    (degenerate) nucleotide codes."""
+    messages: list[str] = []
+    for group in groups:
+        for seg_name in segment_names:
+            seq_obj = group.get_segment(seg_name)
+            if seq_obj is not None and seq_obj.has_degenerate_nt:
+                messages.append(
+                    f"[{seg_name}] {group.group_name} contains degenerate"
+                    " nucleotide codes"
+                )
+    return messages
 
 
 def _check_seq_length_consistency(

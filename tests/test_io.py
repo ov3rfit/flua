@@ -303,6 +303,58 @@ class TestQualityFiltering:
         assert df["NP_aa"].iloc[0] == "MKTLL"
 
 
+class TestDegenerateWarnings:
+    def test_no_warning_for_clean_sequences(self) -> None:
+        group = _make_group("clean", "HA", "MKTLL")
+        _, warnings = groups_to_dataframe(
+            [group],
+            segment_names=["HA"],
+            include_alt_products=False,
+        )
+        degenerate_warns = [w for w in warnings if "degenerate" in w]
+        assert degenerate_warns == []
+
+    def test_warning_when_degenerate_nt_present(self) -> None:
+        record = SeqRecord(Seq("ATGNNNATG"), id="degen|HA")
+        seq = AnalyzedSequence(
+            record=record,
+            seq_type="DNA",
+            aa_seq="MXM",
+            segment_name="HA",
+        )
+        group = SequenceGroup(group_name="degen_sample", source_file="<test>")
+        group.sequences.append(seq)
+        _, warnings = groups_to_dataframe(
+            [group],
+            segment_names=["HA"],
+            include_alt_products=False,
+        )
+        assert any(
+            "degenerate" in w and "HA" in w and "degen_sample" in w for w in warnings
+        )
+
+    def test_warning_only_for_affected_segment(self) -> None:
+        record_ha = SeqRecord(Seq("ATGNNNATG"), id="s|HA")
+        record_np = SeqRecord(Seq("ATGATGATG"), id="s|NP")
+        seq_ha = AnalyzedSequence(
+            record=record_ha, seq_type="DNA", aa_seq="MXM", segment_name="HA"
+        )
+        seq_np = AnalyzedSequence(
+            record=record_np, seq_type="DNA", aa_seq="MMM", segment_name="NP"
+        )
+        group = SequenceGroup(group_name="mixed", source_file="<test>")
+        group.sequences.extend([seq_ha, seq_np])
+        _, warnings = groups_to_dataframe(
+            [group],
+            segment_names=["HA", "NP"],
+            include_alt_products=False,
+        )
+        degenerate_warns = [w for w in warnings if "degenerate" in w]
+        assert len(degenerate_warns) == 1
+        assert "HA" in degenerate_warns[0]
+        assert "NP" not in degenerate_warns[0]
+
+
 class TestGisaidHost:
     def test_host_extracted_from_header(self, gisaid_fasta: Path) -> None:
         groups = load_gisaid_fasta(gisaid_fasta)

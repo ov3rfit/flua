@@ -8,6 +8,8 @@ from Bio.SeqRecord import SeqRecord
 
 from flua.products import GeneProduct
 
+_STANDARD_NT = frozenset("ACGTUacgtu-.")
+
 
 @dataclass
 class AnalyzedSequence:
@@ -41,6 +43,12 @@ class AnalyzedSequence:
         """``True`` if the translated sequence contains an ambiguous residue
         (``X``), typically caused by ambiguous nucleotides in the source."""
         return self.aa_seq is not None and "X" in self.aa_seq
+
+    @property
+    def has_degenerate_nt(self) -> bool:
+        """``True`` if the nucleotide sequence contains IUPAC ambiguity codes
+        (any character that is not A, C, G, T, U, or a gap character)."""
+        return any(c not in _STANDARD_NT for c in self.nt_seq)
 
     def get_product(self, name: str) -> GeneProduct | None:
         """Look up an alternative product by name (case-insensitive)."""
