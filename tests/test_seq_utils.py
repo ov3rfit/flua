@@ -68,3 +68,17 @@ class TestDetectSequenceType:
     def test_ambiguous_defaults_to_dna(self) -> None:
         # Only A, G, C – no distinguishing characters
         assert detect_sequence_type("AGCAGCAGC") == "DNA"
+
+    def test_degenerate_dna_not_misclassified_as_protein(self) -> None:
+        # IUPAC degenerate codes (R, S, W, K, M, H, V) overlap with
+        # PROTEIN_ONLY_CHARS; high GCAT ratio (>90%) must override protein
+        # detection.  20 GCAT + 2 degenerate = 20/22 ≈ 90.9%.
+        assert detect_sequence_type("ATGCATGCATGCATGCATGCRS") == "DNA"
+
+    def test_degenerate_dna_heavy_degenerate(self) -> None:
+        # >90% GCAT → DNA even with degenerate codes present
+        assert detect_sequence_type("ATGCATGCATGCATGCN") == "DNA"
+
+    def test_degenerate_below_threshold_is_protein(self) -> None:
+        # Low GCAT ratio with protein-only chars → Protein
+        assert detect_sequence_type("MFLIVSPHQEDKWRV") == "Protein"

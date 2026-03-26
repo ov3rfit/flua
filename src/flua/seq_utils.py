@@ -15,9 +15,23 @@ from flua.constants import INFLUENZA_SEGMENTS, PROTEIN_ONLY_CHARS
 
 def detect_sequence_type(sequence: str) -> Literal["DNA", "RNA", "Protein"]:
     """Classify sequence as DNA, RNA, or Protein based on its character
-    composition."""
+    composition.
+
+    If more than 90% of characters are standard nucleotides (G, C, A, T),
+    the sequence is classified as DNA or RNA regardless of other characters.
+    This prevents degenerate IUPAC nucleotide codes (e.g. S, R, K, M, V, H,
+    W) from being confused with protein-only amino acid characters.
+    """
     seq_upper = sequence.upper().replace("-", "").replace(".", "")
+    if not seq_upper:
+        return "DNA"
     unique_chars = set(seq_upper)
+
+    gcat_ratio = sum(1 for c in seq_upper if c in "GCAT") / len(seq_upper)
+    if gcat_ratio > 0.9:
+        if "U" in unique_chars and "T" not in unique_chars:
+            return "RNA"
+        return "DNA"
 
     if unique_chars & PROTEIN_ONLY_CHARS:
         return "Protein"
