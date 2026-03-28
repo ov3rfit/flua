@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import io
-import warnings
 from collections import Counter
 from pathlib import Path
-from typing import Iterable, Literal
+from collections.abc import Iterable
+from typing import Literal
 
 import pandas as pd
 from Bio import SeqIO

@@ -41,7 +41,6 @@ from __future__ import annotations
 from itertools import product as _iterproduct
 from typing import Literal
 
-import numpy as np
 import pandas as pd
 
 from flua.constants import AA_ALPHABET, NT_ALPHABET

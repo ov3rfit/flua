@@ -41,7 +41,7 @@ from typing import Literal  # noqa: F401 — kept for potential future type hint
 import numpy as np
 import pandas as pd
 
-from flua.constants import AA_ALPHABET, AA_ALPHABET_EXTENDED
+from flua.constants import AA_ALPHABET_EXTENDED
 from flua.ml import _infer_alphabet
 
 
