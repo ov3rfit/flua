@@ -44,6 +44,17 @@ class TestIdentifySegment:
             ("seq|PA-X|test", "PA-X protein", None),
             ("DYNAMIC_seq", "aeroDYNAMICS study", None),
             ("seg7_MP_flu", "Matrix protein", "MP"),
+            # ``M`` resolves to the canonical ``MP`` segment name.
+            ("seg7_M_flu", "Matrix protein", "MP"),
+            ("sample|M|1", "segment 7", "MP"),
+            ("sample_M", "Influenza A", "MP"),
+            ("M_sample", "Influenza A", "MP"),
+            # ``M1`` / ``M2`` are gene products, not the segment — must not
+            # match as ``MP`` via the ``M`` alias.
+            ("sample|M1|1", "M1 protein", None),
+            ("sample|M2|1", "M2 protein", None),
+            # ``m`` inside an unrelated word must not match as ``MP``.
+            ("A/mallard/Alberta/1/2020", "H5N1", None),
         ],
     )
     def test_segment_matching(

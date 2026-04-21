@@ -5,6 +5,18 @@ from __future__ import annotations
 # Standard influenza A segment names (8 segments).
 INFLUENZA_SEGMENTS = ["PB2", "PB1", "PA", "HA", "NP", "NA", "MP", "NS"]
 
+# Additional tokens that should resolve to a canonical segment name when
+# scanning FASTA headers.  The canonical name (dict key) is what gets
+# returned; every token in the value list is accepted as a synonym.  The
+# canonical token itself does not need to be repeated here — callers add it
+# automatically.
+#
+# ``MP`` ↔ ``M``: GenBank often labels segment 7 as ``M`` while NCBI
+# Influenza Virus Resource and GISAID use ``MP``.  Accept both, return ``MP``.
+SEGMENT_ALIASES: dict[str, list[str]] = {
+    "MP": ["M"],
+}
+
 # IUPAC amino acid characters that never appear in DNA/RNA sequences.
 PROTEIN_ONLY_CHARS = set("FLIMSPHQEDKWRV")
 
@@ -46,7 +58,7 @@ GENE_PRODUCTS: dict[str, list[dict]] = {
             "name": "PB1-F2",
             "mechanism": "alt_orf",
             "scan_frame": 1,
-            "min_length_aa": 50,
+            "min_length_aa": 10,
         },
     ],
     "PA": [
@@ -70,7 +82,8 @@ GENE_PRODUCTS: dict[str, list[dict]] = {
     ],
     "MP": [
         {"name": "M1", "mechanism": "direct"},
-        {"name": "M2", "mechanism": "splicing", "exon1_end": 51, "exon2_start": 740},
+        {"name": "M2", "mechanism": "splicing", "exon1_end": 26, "exon2_start": 715},
+        # {"name": "M2", "mechanism": "splicing", "exon1_end": 51, "exon2_start": 740},
     ],
     "NS": [
         {"name": "NS1", "mechanism": "direct"},

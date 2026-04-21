@@ -8,7 +8,7 @@ from typing import Literal
 
 from Bio.Seq import Seq
 
-from flua.constants import INFLUENZA_SEGMENTS, PROTEIN_ONLY_CHARS
+from flua.constants import INFLUENZA_SEGMENTS, PROTEIN_ONLY_CHARS, SEGMENT_ALIASES
 
 # ── Sequence type detection ──────────────────────────────────────────────
 
@@ -119,20 +119,33 @@ def _build_segment_patterns(
 ) -> list[tuple[str, re.Pattern]]:
     """Build compiled regex patterns for each segment name.
 
-    Longer names are matched first so that e.g. ``"PB1-F2"`` takes
-    priority over ``"PB1"``.  Word boundaries are defined by characters
-    that are not alphanumeric or hyphens, preventing ``"PA"`` from
-    matching inside ``"PA-X"``.
+    Each canonical segment name may have alias tokens listed in
+    :data:`~flua.constants.SEGMENT_ALIASES` — every token is accepted as a
+    match but the canonical name is what gets returned (e.g. header
+    ``"sample_M_flu"`` → segment ``"MP"``).
+
+    Longer tokens are matched first so that e.g. ``"MP"`` takes priority
+    over its alias ``"M"``, and ``"PB1-F2"`` over ``"PB1"``.  Word
+    boundaries are defined by characters that are not alphanumeric or
+    hyphens, preventing ``"PA"`` from matching inside ``"PA-X"`` or
+    ``"M"`` from matching inside ``"M1"``.
     """
-    sorted_names = sorted(segment_names, key=len, reverse=True)
+    name_token_pairs: list[tuple[str, str]] = []
+    for canonical in segment_names:
+        tokens = [canonical, *SEGMENT_ALIASES.get(canonical, [])]
+        for tok in tokens:
+            name_token_pairs.append((canonical, tok))
+
+    name_token_pairs.sort(key=lambda pair: len(pair[1]), reverse=True)
+
     patterns = []
-    for name in sorted_names:
-        escaped = re.escape(name.upper())
+    for canonical, tok in name_token_pairs:
+        escaped = re.escape(tok.upper())
         pattern = re.compile(
             r"(?<![A-Z0-9\-])" + escaped + r"(?![A-Z0-9\-])",
             re.IGNORECASE,
         )
-        patterns.append((name, pattern))
+        patterns.append((canonical, pattern))
     return patterns
 
 
